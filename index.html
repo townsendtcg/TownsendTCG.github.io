@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Townsend TCG</title>
+<meta name="description" content="Pay Townsend TCG at the table and follow along on Instagram and TikTok.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1d33;
+    --bg-2: #16294a;
+    --surface: #1a2d4d;
+    --edge: #2b4270;
+    --text: #f1f5fb;
+    --muted: #9db0cc;
+    --teal: #3fd0c1;
+    --violet: #9277ec;
+    --gold: #f2c75c;
+    --foil: linear-gradient(115deg, #3fd0c1 0%, #7fb4f0 38%, #9277ec 70%, #d68bdc 100%);
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #e9eff8; --bg-2: #dbe5f3; --surface: #ffffff; --edge: #c9d6ea;
+      --text: #12203a; --muted: #50617e; --teal: #13998c; --violet: #6547cf;
+    }
+  }
+  :root[data-theme="light"] { --bg: #e9eff8; --bg-2: #dbe5f3; --surface: #ffffff; --edge: #c9d6ea; --text: #12203a; --muted: #50617e; --teal: #13998c; --violet: #6547cf; }
+  :root[data-theme="dark"] { --bg: #0f1d33; --bg-2: #16294a; --surface: #1a2d4d; --edge: #2b4270; --text: #f1f5fb; --muted: #9db0cc; --teal: #3fd0c1; --violet: #9277ec; }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    min-height: 100%;
+    background:
+      radial-gradient(120% 60% at 50% -10%, color-mix(in srgb, var(--violet) 28%, transparent), transparent 60%),
+      radial-gradient(90% 50% at 100% 30%, color-mix(in srgb, var(--teal) 14%, transparent), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 440px; margin: 0 auto; padding: 28px 20px 48px; }
+
+  /* ---------- The Townsend card ---------- */
+  .stage { perspective: 900px; display: flex; justify-content: center; }
+  .card {
+    --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%; --glare: 0;
+    position: relative;
+    width: min(100%, 330px);
+    aspect-ratio: 63 / 88;
+    border-radius: 16px;
+    padding: 9px;
+    background: var(--foil);
+    box-shadow: 0 30px 60px -20px rgba(4, 10, 24, .75), 0 0 0 1px rgba(255,255,255,.08) inset;
+    transform: rotateX(var(--rx)) rotateY(var(--ry));
+    transition: transform .5s cubic-bezier(.2,.8,.2,1);
+    touch-action: pan-y;
+    color: #f1f5fb;
+  }
+  .card.live { transition: transform .08s linear; }
+  .card-inner {
+    position: relative;
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #13284a 0%, #0d1a31 100%);
+    display: flex;
+    flex-direction: column;
+    padding: 12px 13px 11px;
+    overflow: hidden;
+  }
+  .card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card-name {
+    font-stretch: 125%;
+    font-weight: 900;
+    font-size: 23px;
+    line-height: 1;
+    letter-spacing: -.01em;
+  }
+  .card-name small {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    font-stretch: 100%;
+    letter-spacing: .02em;
+    color: #9db0cc;
+    margin-top: 4px;
+  }
+  .type {
+    font-weight: 800;
+    font-size: 12px;
+    white-space: nowrap;
+    color: #9db0cc;
+  }
+  .type b { font-stretch: 125%; font-size: 22px; color: #f1f5fb; font-weight: 900; }
+
+  .art {
+    position: relative;
+    margin-top: 10px;
+    flex: 0 0 44%;
+    border-radius: 6px;
+    border: 2px solid rgba(242,199,92,.85);
+    background:
+      radial-gradient(circle at 50% 55%, rgba(63,208,193,.45), transparent 55%),
+      radial-gradient(circle at 20% 20%, rgba(146,119,236,.5), transparent 45%),
+      linear-gradient(160deg, #1f3d73, #10213f 70%);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+  .art::before {
+    /* star field */
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 22%, #fff, transparent),
+      radial-gradient(1px 1px at 78% 18%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 88% 64%, #fff, transparent),
+      radial-gradient(1px 1px at 30% 80%, #fff, transparent),
+      radial-gradient(1px 1px at 55% 12%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 8% 60%, #fff, transparent);
+    opacity: .8;
+  }
+  .emblem {
+    position: relative;
+    width: 44%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--foil);
+    box-shadow: 0 0 40px rgba(63,208,193,.55);
+  }
+  .emblem::before {
+    content: ''; position: absolute; left: 0; right: 0; top: 50%;
+    height: 11%; transform: translateY(-50%); background: #10213f;
+  }
+  .emblem::after {
+    content: ''; position: absolute; width: 36%; height: 36%; left: 32%; top: 32%;
+    border-radius: 50%; background: #10213f; box-shadow: inset 0 0 0 7px #f1f5fb;
+  }
+  .flavor-strip {
+    margin-top: 7px;
+    font-size: 10px;
+    font-style: italic;
+    font-weight: 600;
+    text-align: center;
+    color: #10213f;
+    background: linear-gradient(90deg, #c9a24a, #f2d98c, #c9a24a);
+    border-radius: 3px;
+    padding: 2px 6px;
+  }
+  .moves { margin-top: 9px; display: flex; flex-direction: column; gap: 8px; }
+  .move { display: grid; grid-template-columns: 34px 1fr; column-gap: 8px; align-items: start; }
+  .pips { display: flex; gap: 3px; padding-top: 2px; }
+  .pip { width: 14px; height: 14px; border-radius: 50%; background: var(--foil); box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
+  .move h3 { font-stretch: 112%; font-weight: 850; font-size: 15px; line-height: 1.15; }
+  .move p { grid-column: 2; font-size: 11.5px; line-height: 1.35; color: #c4d1e4; margin-top: 2px; }
+  .card-foot {
+    margin-top: auto;
+    display: flex; justify-content: space-between; align-items: end;
+    font-size: 9.5px; color: #9db0cc; font-weight: 600;
+    border-top: 1px solid rgba(157,176,204,.25);
+    padding-top: 6px;
+  }
+  .card-foot i { max-width: 70%; line-height: 1.3; }
+
+  /* holo glare, follows your finger */
+  .holo {
+    position: absolute; inset: 0; border-radius: 16px; pointer-events: none;
+    background:
+      radial-gradient(circle at var(--mx) var(--my), rgba(255,255,255,.55), transparent 42%),
+      repeating-linear-gradient(115deg, rgba(63,208,193,.0) 0%, rgba(63,208,193,.22) 6%, rgba(146,119,236,.22) 12%, rgba(214,139,220,.0) 18%);
+    background-size: 100% 100%, 260% 260%;
+    background-position: center, var(--mx) var(--my);
+    mix-blend-mode: color-dodge;
+    opacity: calc(.25 + var(--glare) * .6);
+    transition: opacity .4s;
+  }
+  .hint { text-align: center; font-size: 12.5px; color: var(--muted); margin-top: 12px; }
+
+
+  /* ---------- Free card CTA ---------- */
+  .freebie {
+    position: relative;
+    margin-top: 30px;
+    padding: 22px 18px 18px;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 2px dashed color-mix(in srgb, var(--teal) 70%, transparent);
+    overflow: hidden;
+  }
+  .freebie-mark {
+    position: absolute;
+    top: 14px; right: -34px;
+    transform: rotate(35deg);
+    width: 130px;
+    text-align: center;
+    padding: 4px 0;
+    background: var(--foil);
+    color: #0d1a31;
+    font-stretch: 125%;
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: .08em;
+  }
+  .freebie h2 { margin: 0 0 8px; padding-right: 56px; font-size: 25px; }
+  .freebie p { font-size: 15.5px; color: var(--muted); max-width: 34ch; }
+  .freebie .socials { margin-top: 16px; }
+  .freebie .social { background: var(--foil); color: #0d1a31; border: 0; font-weight: 800; }
+  .fine { display: block; margin-top: 12px; font-size: 13px; color: var(--muted); }
+
+  /* ---------- Socials ---------- */
+  .socials { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; }
+  .social {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 13px 10px; border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    border: 1px solid var(--edge);
+    color: var(--text); text-decoration: none; font-weight: 700; font-size: 15px;
+  }
+  .social svg { width: 18px; height: 18px; }
+
+  /* ---------- Pay ---------- */
+  h2 { font-stretch: 118%; font-weight: 900; font-size: 26px; line-height: 1.1; letter-spacing: -.01em; margin: 44px 0 14px; }
+
+  .pay-card {
+    position: relative;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 18px 18px;
+    border-radius: 14px;
+    background: var(--foil);
+    color: #0d1a31;
+    text-decoration: none;
+    overflow: hidden;
+  }
+  .pay-card strong { display: block; font-stretch: 118%; font-weight: 900; font-size: 20px; line-height: 1.1; }
+  .pay-card span { display: block; font-size: 14px; font-weight: 600; margin-top: 3px; opacity: .85; }
+  .pay-card svg { width: 26px; height: 26px; flex-shrink: 0; }
+
+  .or { font-size: 14px; color: var(--muted); margin: 18px 0 10px; }
+
+  .apps { display: flex; flex-direction: column; gap: 8px; }
+  .app {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 12px 14px 12px 12px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    color: var(--text);
+    text-decoration: none;
+    font: inherit; text-align: left; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app:active { transform: scale(.985); }
+  .badge {
+    width: 44px; height: 44px; border-radius: 11px;
+    display: grid; place-items: center;
+    font-weight: 900; font-size: 20px; font-stretch: 112%; color: #fff;
+  }
+  .venmo .badge { background: #008cff; }
+  .cash .badge { background: #00c244; }
+  .paypal .badge { background: #003087; }
+  .zelle .badge { background: #6d1ed4; }
+  .app b { display: block; font-weight: 800; font-size: 16.5px; line-height: 1.2; }
+  .app small { display: block; font-size: 14px; color: var(--muted); font-weight: 600; }
+  .app .go { font-size: 13px; font-weight: 800; color: var(--teal); white-space: nowrap; }
+
+  .note { margin-top: 16px; font-size: 14px; color: var(--muted); }
+
+  /* ---------- More ---------- */
+  .row-link {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 16px 2px; border-bottom: 1px solid var(--edge);
+    color: var(--text); text-decoration: none;
+  }
+  .row-link:first-of-type { border-top: 1px solid var(--edge); }
+  .row-link b { font-weight: 800; font-size: 16px; }
+  .row-link small { display: block; color: var(--muted); font-size: 14px; }
+  .row-link svg { width: 18px; height: 18px; color: var(--teal); flex-shrink: 0; }
+
+  footer { margin-top: 36px; font-size: 13px; color: var(--muted); text-align: center; }
+
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .card.live { transition: none; transform: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <div class="stage">
+    <article class="card" id="card" aria-label="Townsend TCG">
+      <div class="card-inner">
+        <div class="card-top">
+          <h1 class="card-name">Townsend TCG<small>Card show vendor</small></h1>
+          <span class="type">EST <b>FL</b></span>
+        </div>
+        <div class="art" aria-hidden="true"><div class="emblem"></div></div>
+        <div class="flavor-strip">Home base: Saint Augustine, Florida</div>
+        <div class="moves">
+          <div class="move">
+            <div class="pips" aria-hidden="true"><span class="pip"></span></div>
+            <h3>Dig the Binder</h3>
+            <p>Singles, slabs, and a dollar binder with something for every budget.</p>
+          </div>
+          <div class="move">
+            <div class="pips" aria-hidden="true"><span class="pip"></span><span class="pip"></span></div>
+            <h3>Always Down to Trade</h3>
+            <p>Bring your binder. If it's a fair swap, let's shake on it.</p>
+          </div>
+        </div>
+        <div class="card-foot">
+          <i>Spotted at card shows all over Florida. Usually found behind a table of rainbow rares.</i>
+          <span>001/001</span>
+        </div>
+      </div>
+      <div class="holo" aria-hidden="true"></div>
+    </article>
+  </div>
+  <p class="hint">Drag across the card to tilt it</p>
+
+  <section class="freebie" aria-labelledby="free-heading">
+    <div class="freebie-mark" aria-hidden="true">FREE</div>
+    <h2 id="free-heading">Follow us, get a free card</h2>
+    <p>Follow @townsend_tcg on Instagram or TikTok, show us at the table, and pick any card from the $1 binder. It's yours.</p>
+    <nav class="socials" aria-label="Social media">
+      <a class="social" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+        Instagram
+      </a>
+      <a class="social" href="https://www.tiktok.com/@townsend_tcg" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 3c.4 2.3 1.9 3.8 4.1 4v3.1c-1.5 0-2.9-.4-4.1-1.2v6.3c0 3.4-2.7 5.8-5.9 5.8S5 18.6 5 15.4c0-3.3 2.8-6 6.3-5.7v3.2c-1.5-.3-3.1.9-3.1 2.5 0 1.4 1.1 2.6 2.6 2.6s2.6-1.1 2.6-2.8V3h3.2z"/></svg>
+        TikTok
+      </a>
+    </nav>
+    <small class="fine">One free card per person. Already following? Show us anyway and say hi.</small>
+  </section>
+
+  <section aria-labelledby="pay-heading">
+    <h2 id="pay-heading">Pay for your cards</h2>
+
+    <a class="pay-card" href="https://pay.jim.com/austin-mckay-townsend" target="_blank" rel="noopener">
+      <div>
+        <strong>Pay with card</strong>
+        <span>Credit, debit, Apple Pay or Google Pay</span>
+      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6.5 15h4"/></svg>
+    </a>
+
+    <p class="or">Or use the app you already have:</p>
+
+    <div class="apps">
+      <a class="app venmo" href="https://venmo.com/u/ATowns8" target="_blank" rel="noopener">
+        <span class="badge" aria-hidden="true">V</span>
+        <span><b>Venmo</b><small>@ATowns8</small></span>
+        <span class="go">Open</span>
+      </a>
+      <a class="app cash" href="https://cash.app/$Atowns08" target="_blank" rel="noopener">
+        <span class="badge" aria-hidden="true">$</span>
+        <span><b>Cash App</b><small>$Atowns08</small></span>
+        <span class="go">Open</span>
+      </a>
+      <a class="app paypal" href="https://www.paypal.com/qrcodes/p2pqrc/BRRCT7ZUHLJWG" target="_blank" rel="noopener">
+        <span class="badge" aria-hidden="true">P</span>
+        <span><b>PayPal</b><small>Austin Townsend</small></span>
+        <span class="go">Open</span>
+      </a>
+      <button class="app zelle" type="button" id="zelle" data-number="8018423331">
+        <span class="badge" aria-hidden="true">Z</span>
+        <span><b>Zelle</b><small>(801) 842-3331</small></span>
+        <span class="go" id="zelle-go">Copy</span>
+      </button>
+    </div>
+
+    <p class="note">Cash is always welcome too. Show us your payment confirmation before you head out and we'll hand over your cards.</p>
+  </section>
+
+  <section aria-labelledby="more-heading">
+    <h2 id="more-heading">Catch us at the next show</h2>
+    <a class="row-link" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener">
+      <span><b>Upcoming show schedule</b><small>Posted on our Instagram</small></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+    </a>
+    <a class="row-link" href="https://ig.me/m/townsend_tcg" target="_blank" rel="noopener">
+      <span><b>Buy, sell or trade</b><small>Send us a DM on Instagram</small></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+    </a>
+  </section>
+
+  <footer>Townsend TCG, Saint Augustine, FL</footer>
+</main>
+
+<script>
+  (function () {
+    // Holo card tilt
+    var card = document.getElementById('card');
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function move(x, y) {
+      var r = card.getBoundingClientRect();
+      var px = Math.min(Math.max((x - r.left) / r.width, 0), 1);
+      var py = Math.min(Math.max((y - r.top) / r.height, 0), 1);
+      card.style.setProperty('--mx', (px * 100) + '%');
+      card.style.setProperty('--my', (py * 100) + '%');
+      card.style.setProperty('--glare', 1);
+      if (!reduce) {
+        card.style.setProperty('--ry', ((px - .5) * 22) + 'deg');
+        card.style.setProperty('--rx', ((.5 - py) * 22) + 'deg');
+      }
+    }
+    function reset() {
+      card.classList.remove('live');
+      card.style.setProperty('--rx', '0deg');
+      card.style.setProperty('--ry', '0deg');
+      card.style.setProperty('--glare', 0);
+    }
+    card.addEventListener('pointermove', function (e) { card.classList.add('live'); move(e.clientX, e.clientY); });
+    card.addEventListener('pointerleave', reset);
+    card.addEventListener('touchmove', function (e) {
+      var t = e.touches[0]; card.classList.add('live'); move(t.clientX, t.clientY);
+    }, { passive: true });
+    card.addEventListener('touchend', reset);
+
+    // Zelle copy
+    var btn = document.getElementById('zelle');
+    var go = document.getElementById('zelle-go');
+    btn.addEventListener('click', function () {
+      var num = btn.getAttribute('data-number');
+      var done = function () { go.textContent = 'Copied'; setTimeout(function () { go.textContent = 'Copy'; }, 2200); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(num).then(done, function () { fallback(num); done(); });
+      } else { fallback(num); done(); }
+    });
+    function fallback(text) {
+      try {
+        var t = document.createElement('textarea');
+        t.value = text; t.setAttribute('readonly', '');
+        t.style.position = 'absolute'; t.style.left = '-9999px';
+        document.body.appendChild(t); t.select(); document.execCommand('copy');
+        document.body.removeChild(t);
+      } catch (e) {}
+    }
+  })();
+</script>
+</body>
+</html>
