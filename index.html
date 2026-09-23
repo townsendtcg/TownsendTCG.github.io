@@ -177,7 +177,7 @@ img { display: block; max-width: 100%; }
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
   .logo-tcg { background: var(--pearl); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
 }
-.mark { text-decoration: none; font-size: 21px; }
+.mark { text-decoration: none; font-size: 21px; display: inline-flex; align-items: center; min-height: 44px; }
 .mark-meta { font-size: 12.5px; line-height: 1.35; color: var(--muted-d); text-align: right; }
 .nav { display: none; }
 .nav a {
@@ -190,7 +190,7 @@ img { display: block; max-width: 100%; }
 }
 .nav a.nav-pay:hover { background: #fff; }
 
-/* Quick links under the header: schedule + Collectr */
+/* Quick links under the header: schedule + cards */
 .quick { display: flex; gap: 10px; padding-top: 4px; padding-bottom: 6px; }
 .quick a {
   flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -207,11 +207,12 @@ img { display: block; max-width: 100%; }
    Hero / Pay
    ========================================================= */
 .hero { padding-top: clamp(10px, 3vh, 64px); padding-bottom: clamp(56px, 9vw, 140px); }
-.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "free" "head" "pay" "trust"; row-gap: 22px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "pay" "trust" "free"; row-gap: 22px; }
 .hero-head { grid-area: head; }
 .kicker { display: block; font-size: clamp(20px, 2.3vw, 30px); font-weight: 600; color: var(--muted-d); letter-spacing: -.015em; line-height: 1.2; margin-bottom: 6px; }
 .hero-title .big { display: block; font-size: clamp(4.5rem, 21vw, 11.5rem); }
-.hero-head { margin-top: 18px; }
+.hero-head { margin-top: 6px; }
+.free-top { margin-top: 10px; }
 
 /* Free card panel: the first thing on the page */
 .free-top {
@@ -228,7 +229,7 @@ img { display: block; max-width: 100%; }
 }
 .free-title {
   font-family: var(--font-cond); font-weight: 800; letter-spacing: -.015em; line-height: .9;
-  font-size: clamp(2.7rem, 12.5vw, 4.4rem);
+  font-size: clamp(2.2rem, 10vw, 3.6rem);
 }
 .free-title .ln { display: block; }
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
@@ -553,14 +554,32 @@ img { display: block; max-width: 100%; }
 .shows-grid { display: grid; gap: 40px; }
 .shows-body .btn { margin-top: 32px; }
 .shows-body .note { margin-top: 14px; font-size: 14px; color: var(--muted-l); }
+.shows-body .note a { color: var(--foil-deep); font-weight: 600; }
+.show-list { list-style: none; margin-top: 24px; border-top: 1px solid var(--rule-l); }
+.show[hidden] { display: none; }
+.show { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--rule-l); }
+.show-date { flex: none; width: 72px; display: grid; justify-items: center; line-height: 1; padding: 8px 0; border-radius: 12px; background: var(--ink); color: var(--paper); }
+.show-mon { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--teal); }
+.show-day { font-family: var(--font-cond); font-weight: 800; font-size: 24px; margin-top: 3px; white-space: nowrap; letter-spacing: -.02em; }
+.show-day.sm { font-size: 20px; }
+.nw { white-space: nowrap; }
+.show-dow { font-size: 11px; color: var(--muted-d); margin-top: 3px; }
+.show-info { display: grid; gap: 3px; min-width: 0; }
+.show-name { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.show-meta { font-size: 14px; color: var(--muted-l); line-height: 1.35; }
+.show.is-next .show-date { background: var(--pearl); color: #fff; }
+.show.is-next .show-mon, .show.is-next .show-dow { color: rgba(255,255,255,.85); }
 
 /* ---- Footer ---- */
 .foot { padding-top: 72px; padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
 .foot-grid { display: grid; gap: 32px; }
 .foot-name { font-size: clamp(30px, 5vw, 52px); }
 .foot-place { color: var(--muted-d); font-size: 15px; margin-top: 10px; }
-.foot-links { display: flex; gap: 28px; list-style: none; }
-.foot-links a { font-size: 16px; font-weight: 600; text-decoration: none; padding: 8px 0; display: inline-block; }
+.foot-links { display: flex; flex-wrap: wrap; column-gap: 28px; row-gap: 4px; list-style: none; }
+.foot-links a { font-size: 16px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
+.foot-legal { display: flex; gap: 20px; margin-top: 18px; font-size: 13px; }
+.foot-legal a { color: var(--muted-d); text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
+.foot-legal a:hover { color: var(--on-d); }
 .foot-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .foot-copy { font-size: 13px; color: var(--muted-d); }
 
@@ -662,7 +681,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
   .hero { padding-top: clamp(48px, 9vh, 120px); }
   .hero-grid {
     grid-template-columns: minmax(0, 1.2fr) minmax(380px, .8fr);
-    grid-template-areas: "free free" "head pay" "trust pay";
+    grid-template-areas: "head pay" "trust pay" "free free";
     column-gap: clamp(56px, 8vw, 140px);
     row-gap: 48px;
     align-items: end;
@@ -720,20 +739,20 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
     <nav class="nav" aria-label="Main">
       <a href="#binder">Cards</a>
       <a href="#shows">Shows</a>
-      <a href="https://app.getcollectr.com/showcase/profile/1610621e-dfd1-42ae-b30f-a6e79202c156" target="_blank" rel="noopener">Collectr</a>
+      <a href="https://app.getcollectr.com/showcase/profile/1610621e-dfd1-42ae-b30f-a6e79202c156" target="_blank" rel="noopener">Browse cards</a>
       <a href="#free">Free card</a>
       <a class="nav-pay" href="#pay">Pay</a>
     </nav>
   </header>
 
   <div class="wrap quick" aria-label="Quick links">
-    <a href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener">
+    <a href="#shows">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
       Show schedule
     </a>
     <a href="https://app.getcollectr.com/showcase/profile/1610621e-dfd1-42ae-b30f-a6e79202c156" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="15" rx="1.8"/><path d="M9 21h9.2a1.8 1.8 0 0 0 1.8-1.8V7"/></svg>
-      Collectr
+      Browse cards
     </a>
   </div>
 
@@ -948,11 +967,46 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
         </h2>
         <div class="shows-body">
           <p class="lede">Catch Townsend TCG at card shows around Florida.</p>
-          <a class="btn btn-ink" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener">
-            View show schedule
-            <svg class="go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </a>
-          <p class="note">Upcoming shows are posted on our Instagram.</p>
+          <ol class="show-list" id="show-list" role="list">
+            <li class="show" data-end="2026-09-26">
+              <span class="show-date"><span class="show-mon">Sep</span><span class="show-day">26</span><span class="show-dow">Sat</span></span>
+              <span class="show-info"><span class="show-name">AstroCon</span><span class="show-meta">St. Augustine · <span class="nw">Doors 9 AM</span></span></span>
+            </li>
+            <li class="show" data-end="2026-10-17">
+              <span class="show-date"><span class="show-mon">Oct</span><span class="show-day">17</span><span class="show-dow">Sat</span></span>
+              <span class="show-info"><span class="show-name">Grail Chasers Card Show</span><span class="show-meta">Jacksonville</span></span>
+            </li>
+            <li class="show" data-end="2026-10-31">
+              <span class="show-date"><span class="show-mon">Oct</span><span class="show-day">31</span><span class="show-dow">Sat</span></span>
+              <span class="show-info"><span class="show-name">Cardichu Jacksonville</span><span class="show-meta">Schultz Center, Jacksonville · <span class="nw">11 AM – 5 PM</span></span></span>
+            </li>
+            <li class="show" data-end="2026-11-22">
+              <span class="show-date"><span class="show-mon">Nov</span><span class="show-day">22</span><span class="show-dow">Sun</span></span>
+              <span class="show-info"><span class="show-name">Cardichu Orlando</span><span class="show-meta">Dezerland Park, Orlando · <span class="nw">11 AM – 5 PM</span></span></span>
+            </li>
+            <li class="show" data-end="2026-11-29">
+              <span class="show-date"><span class="show-mon">Nov</span><span class="show-day sm">28–29</span><span class="show-dow">Sat–Sun</span></span>
+              <span class="show-info"><span class="show-name">River City Card Show</span><span class="show-meta">Jacksonville · <span class="nw">Sat 9–5, Sun 10–4</span></span></span>
+            </li>
+            <li class="show" data-end="2026-12-06">
+              <span class="show-date"><span class="show-mon">Dec</span><span class="show-day sm">4–6</span><span class="show-dow">Fri–Sun</span></span>
+              <span class="show-info"><span class="show-name">UltimateCon Daytona</span><span class="show-meta">Ocean Center, Daytona Beach · <span class="nw">Opens 11 AM Friday</span></span></span>
+            </li>
+            <li class="show" data-end="2026-12-12">
+              <span class="show-date"><span class="show-mon">Dec</span><span class="show-day">12</span><span class="show-dow">Sat</span></span>
+              <span class="show-info"><span class="show-name">Grail Chasers Card Show</span><span class="show-meta">Jacksonville</span></span>
+            </li>
+            <li class="show" data-end="2026-12-19">
+              <span class="show-date"><span class="show-mon">Dec</span><span class="show-day">19</span><span class="show-dow">Sat</span></span>
+              <span class="show-info"><span class="show-name">Cardichu Jacksonville</span><span class="show-meta">Schultz Center, Jacksonville · <span class="nw">11 AM – 5 PM</span></span></span>
+            </li>
+            <li class="show" data-end="2026-12-20">
+              <span class="show-date"><span class="show-mon">Dec</span><span class="show-day">20</span><span class="show-dow">Sun</span></span>
+              <span class="show-info"><span class="show-name">Cardichu Orlando</span><span class="show-meta">Dezerland Park, Orlando · <span class="nw">11 AM – 5 PM</span></span></span>
+            </li>
+          </ol>
+          <p class="note" id="shows-empty" hidden>New dates coming soon.</p>
+          <p class="note">Plans change sometimes. <a href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener">Instagram</a> always has the latest.</p>
         </div>
       </div>
     </section>
@@ -971,8 +1025,12 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
       <ul class="foot-links" role="list">
         <li><a href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener">Instagram</a></li>
         <li><a href="https://www.tiktok.com/@townsend_tcg" target="_blank" rel="noopener">TikTok</a></li>
+        <li><a href="https://app.getcollectr.com/showcase/profile/1610621e-dfd1-42ae-b30f-a6e79202c156" target="_blank" rel="noopener">Browse cards</a></li>
       </ul>
-      <p class="foot-copy">© 2026 Townsend TCG</p>
+      <div class="foot-copy">
+        <p>© 2026 Townsend TCG</p>
+        <p class="foot-legal"><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></p>
+      </div>
     </div>
   </footer>
 </div>
@@ -1011,6 +1069,22 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
   var reduceQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   function reduced() { return !!(reduceQuery && reduceQuery.matches); }
   function clamp01(n) { return Math.min(Math.max(n, 0), 1); }
+
+
+  /* ---------- Show list: hide past dates, mark the next one ---------- */
+  (function () {
+    var list = document.getElementById('show-list');
+    if (!list) return;
+    var now = new Date(); var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var first = null;
+    Array.prototype.forEach.call(list.querySelectorAll('.show'), function (li) {
+      var p = (li.getAttribute('data-end') || '').split('-');
+      var end = new Date(+p[0], +p[1] - 1, +p[2]);
+      if (end < today) { li.hidden = true; } else if (!first) { first = li; }
+    });
+    if (first) { first.classList.add('is-next'); }
+    else { document.getElementById('shows-empty').hidden = false; list.hidden = true; }
+  })();
 
   /* ---------- Section headline reveals ---------- */
   var reveals = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
