@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex"><title>Connecting... | Townsend TCG</title>
+<script>
+  var COMPOSIO_CALLBACK = "https://backend.composio.dev/api/v3/toolkits/auth/callback";
+  window.location.replace(COMPOSIO_CALLBACK + window.location.search);
+</script>
+<style>body{margin:0;background:#111226;color:#eff0f4;font-family:'Helvetica Neue',Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:20px}a{color:#6fd3c6}</style>
+</head><body><p>Finishing TikTok sign-in...<br><a id="go" href="#">Tap here if nothing happens</a></p>
+<script>document.getElementById("go").href = COMPOSIO_CALLBACK + window.location.search;</script>
+</body></html>
