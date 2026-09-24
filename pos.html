@@ -87,7 +87,7 @@ async function exportBook() {
 }
 
 /* =========================== PIN GATE =========================== */
-const PIN_CODE = "TCG2026"; // change me — see the comment at the top of this file
+const PIN_CODE = "0921"; // change me — see the comment at the top of this file
 function PinGate({ children }) {
   const [ok, setOk] = useState(() => sessionStorage.getItem("boothbook_pin_ok") === "1");
   const [val, setVal] = useState("");
@@ -104,7 +104,7 @@ function PinGate({ children }) {
           onKeyDown={(e) => { if (e.key === "Enter") {
             if (val === PIN_CODE) { sessionStorage.setItem("boothbook_pin_ok", "1"); setOk(true); } else setErr(true);
           }}}
-          type="password" autoCapitalize="characters" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="PIN" autoFocus
+          type="password" inputMode="numeric" pattern="[0-9]*" autoComplete="off" placeholder="PIN" autoFocus
           className="w-full rounded-xl py-4 px-4 text-center text-lg font-mono outline-none mb-3"
           style={{ background: "#111C3A", border: `1px solid ${err ? "#F4726A" : "#26365F"}`, color: "#E9EFFC" }} />
         <button
