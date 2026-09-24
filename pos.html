@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Townsend TCG — Booth Book</title>
+<link rel="icon" href="data:,">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+    "lucide-react": "https://esm.sh/lucide-react@0.460.0?external=react",
+    "idb-keyval": "https://esm.sh/idb-keyval@6.2.1"
+  }
+}
+</script>
+<style>
+  html, body, #root { height: 100%; }
+  body { margin: 0; background: #080F22; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!--
+  This page is the private side of the site — inventory, deals, cash, stats.
+  It never talks to GitHub or the public storefront; everything lives in this
+  browser's IndexedDB, on this device only.
+
+  The PIN below is a screen-door, not a lock: anyone who reads this file's
+  source can read the PIN. It just keeps a casual visitor who finds the link
+  from poking around. Change PIN_CODE any time by editing this file.
+
+  Photo-based card reading ("Snap the deal") needs a small server to proxy
+  the vision call — this static deployment doesn't have one, so that button
+  is disabled here with a note. Manual entry works fully. Add a backend later
+  (see the README) to turn it back on.
+-->
+
+<script type="text/babel" data-type="module" data-presets="react">
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { createRoot } from "react-dom/client";
+import { get, set, del, keys } from "idb-keyval";
+import {
+  Search, Plus, Minus, X, TrendingUp, Package, Wallet, BarChart3, Camera,
+  Trash2, Check, Loader2, ArrowUpRight, ArrowDownRight, Play, Square,
+  ArrowLeftRight, RefreshCw, AlertTriangle, Image as ImageIcon, Banknote,
+  CornerDownLeft, Scale, Layers, Merge, ListChecks, Tag, MoveRight, Clock,
+  Activity, Lock, Download,
+} from "lucide-react";
+
+/* ---------------------------------------------------------------
+   IndexedDB shim — same shape as the Claude artifact storage API,
+   so BoothBook below never has to know which host it's running on.
+----------------------------------------------------------------*/
+const scoped = (key, shared) => `${shared ? "shared" : "user"}:${key}`;
+function installStorageShim() {
+  if (typeof window === "undefined" || window.storage) return;
+  window.storage = {
+    __shim: true,
+    async get(key, shared = false) {
+      const value = await get(scoped(key, shared));
+      if (value === undefined) throw new Error(`No value stored for "${key}"`);
+      return { key, value, shared };
+    },
+    async set(key, value, shared = false) { await set(scoped(key, shared), value); return { key, value, shared }; },
+    async delete(key, shared = false) { await del(scoped(key, shared)); return { key, deleted: true, shared }; },
+    async list(prefix = "", shared = false) {
+      const all = await keys();
+      const want = scoped(prefix, shared);
+      return { keys: all.filter((k) => typeof k === "string" && k.startsWith(want)).map((k) => k.slice(k.indexOf(":") + 1)), prefix, shared };
+    },
+  };
+}
+installStorageShim();
+
+async function exportBook() {
+  const all = await keys();
+  const out = {};
+  for (const k of all) if (typeof k === "string") out[k] = await get(k);
+  return JSON.stringify(out, null, 2);
+}
+
+/* =========================== PIN GATE =========================== */
+const PIN_CODE = "TCG2026"; // change me — see the comment at the top of this file
+function PinGate({ children }) {
+  const [ok, setOk] = useState(() => sessionStorage.getItem("boothbook_pin_ok") === "1");
+  const [val, setVal] = useState("");
+  const [err, setErr] = useState(false);
+  if (ok) return children;
+  return (
+    <div className="min-h-screen flex items-center justify-center px-6" style={{ background: "#080F22", color: "#E9EFFC" }}>
+      <div className="w-full max-w-xs">
+        <div className="flex items-center gap-2 mb-4 justify-center" style={{ color: "#7C8CB4" }}>
+          <Lock size={16} /><span className="text-xs tracking-widest font-semibold">BOOTH BOOK</span>
+        </div>
+        <input
+          value={val} onChange={(e) => { setVal(e.target.value); setErr(false); }}
+          onKeyDown={(e) => { if (e.key === "Enter") {
+            if (val === PIN_CODE) { sessionStorage.setItem("boothbook_pin_ok", "1"); setOk(true); } else setErr(true);
+          }}}
+          type="password" inputMode="numeric" placeholder="PIN" autoFocus
+          className="w-full rounded-xl py-4 px-4 text-center text-lg font-mono outline-none mb-3"
+          style={{ background: "#111C3A", border: `1px solid ${err ? "#F4726A" : "#26365F"}`, color: "#E9EFFC" }} />
+        <button
+          onClick={() => { if (val === PIN_CODE) { sessionStorage.setItem("boothbook_pin_ok", "1"); setOk(true); } else setErr(true); }}
+          className="w-full rounded-xl py-3.5 font-semibold" style={{ background: "#3AD9C4", color: "#080F22" }}>
+          Enter
+        </button>
+        {err && <div className="text-xs mt-3 text-center" style={{ color: "#F4726A" }}>Wrong PIN.</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------
+   Townsend TCG — Booth Book v5
+   New in v5:
+     - zones mapped to the physical cases and binders
+     - yellow / silver border split from set series
+     - sticker price engine (case = nearest $5, binder = nearest $1)
+     - daily attention list: reprice, relocate, watch, aging
+----------------------------------------------------------------*/
+
+const C = {
+  ink: "#080F22", surface: "#111C3A", surface2: "#1A2850", line: "#26365F",
+  text: "#E9EFFC", muted: "#7C8CB4", teal: "#3AD9C4", purple: "#8E74F0",
+  gold: "#F0B849", loss: "#F4726A",
+};
+
+const KEY = "townsend_boothbook_v5";
+const OLDKEY = "townsend_boothbook_v4";
+const BLANK = {
+  cards: [], sales: [], ledger: [], shows: [], deals: [], activeShowId: null,
+  startingCash: 0, tcgKey: "", priceMultiplier: 1, dollarBin: { qty: 0, costPool: 0, refillAt: 100 },
+  agingShows: 5, watchPct: 15, lastCheck: null, checkDay: 5,
+};
+const DAYNAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const METHODS = ["Cash", "Venmo", "Card", "Other"];
+const CONDITIONS = ["NM", "LP", "MP", "HP", "DMG"];
+const PRINTINGS = ["Normal", "Holo", "Reverse", "1st Ed"];
+
+const COND_MULT = { NM: 1, LP: 0.85, MP: 0.7, HP: 0.5, DMG: 0.35 };
+
+const YELLOW_SERIES = ["base", "gym", "neo", "legendarycollection", "ecard", "ex", "pop", "diamondpearl", "platinum", "heartgoldsoulsilver", "calloflegends", "np"];
+
+const ZONES = {
+  dollar: { label: "Dollar binder", short: "$1 binder" },
+  binder: { label: "Priced binder", short: "$2–20 binder" },
+  modern: { label: "Modern case", short: "Modern case" },
+  vintage: { label: "Vintage case", short: "Vintage case" },
+  high: { label: "High end case", short: "High end" },
+};
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+const money = (n) => (n < 0 ? "-$" : "$") + Math.abs(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money0 = (n) => (n < 0 ? "-$" : "$") + Math.abs(Math.round(n || 0)).toLocaleString("en-US");
+const num = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+const sum = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
+const slug = (s) => (s || "").toString().toLowerCase().replace(/[^a-z0-9]/g, "");
+const DAY = 86400000;
+const daysSince = (t) => (t ? Math.floor((Date.now() - t) / DAY) : null);
+
+const visionUrl = () => "/api/vision"; // not wired up on this deployment — see the note at the top of this file
+
+const borderOf = (series) => (YELLOW_SERIES.includes(slug(series)) ? "yellow" : "silver");
+const valueOf = (c, mult = 1) => (c.market || 0) * (COND_MULT[c.condition] ?? 1) * mult;
+
+function zoneFor(c, mult = 1) {
+  if (c.graded) return "high";
+  const v = valueOf(c, mult);
+  if (v >= 100) return "high";
+  if (v > 20) return c.border === "yellow" ? "vintage" : "modern";
+  if (v > 1.5) return "binder";
+  return "dollar";
+}
+function stickerFor(c, mult = 1) {
+  const zone = zoneFor(c, mult);
+  const v = valueOf(c, mult);
+  if (zone === "dollar") return 1;
+  if (zone === "binder") return Math.max(2, Math.min(20, Math.round(v)));
+  return Math.max(5, Math.round(v / 5) * 5);
+}
+const carriesSticker = (c, mult = 1) => !c.graded && valueOf(c, mult) < 500;
+
+function resize(file, maxDim, quality) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(img.width * scale); cv.height = Math.round(img.height * scale);
+        cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+        res(cv.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => rej(new Error("bad image"));
+      img.src = r.result;
+    };
+    r.onerror = () => rej(new Error("read failed"));
+    r.readAsDataURL(file);
+  });
+}
+const PRINT_MAP = { holofoil: "Holo", normal: "Normal", reverseHolofoil: "Reverse", "1stEditionHolofoil": "1st Ed", "1stEditionNormal": "1st Ed", unlimitedHolofoil: "Holo" };
+const PRINT_ORDER = ["holofoil", "normal", "reverseHolofoil", "1stEditionHolofoil", "unlimitedHolofoil", "1stEditionNormal"];
+function pickPrice(card) {
+  const p = card?.tcgplayer?.prices; if (!p) return null;
+  for (const k of PRINT_ORDER) if (p[k]?.market) return { value: p[k].market, printing: k };
+  for (const k of Object.keys(p)) if (p[k]?.market) return { value: p[k].market, printing: k };
+  for (const k of Object.keys(p)) if (p[k]?.mid) return { value: p[k].mid, printing: k };
+  return null;
+}
+async function tcgLookup(name, setName, number, apiKey) {
+  const clean = (s) => (s || "").replace(/["\\]/g, "").trim();
+  let q = `name:"${clean(name)}"`;
+  if (number) q += ` number:"${clean(String(number)).split("/")[0]}"`;
+  const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=12`, { headers: apiKey ? { "X-Api-Key": apiKey } : {} });
+  if (!r.ok) throw new Error("lookup " + r.status);
+  let cards = (await r.json()).data || [];
+  if (!cards.length) return null;
+  if (setName) {
+    const s = setName.toLowerCase();
+    const hit = cards.filter((c) => (c.set?.name || "").toLowerCase().includes(s) || s.includes((c.set?.name || "").toLowerCase()));
+    if (hit.length) cards = hit;
+  }
+  for (const c of cards) {
+    const p = pickPrice(c);
+    if (p) return { market: p.value, printing: PRINT_MAP[p.printing] || "Normal", set: c.set?.name, series: c.set?.series, number: c.number, tcgId: c.id };
+  }
+  return null;
+}
+
+const makeKey = (c) => [slug(c.tcgId) || slug(c.name) + "-" + slug(c.set), slug(c.number), slug(c.printing || "normal"), slug(c.condition || "NM"), c.graded ? "g" : "r"].join("|");
+const avgCost = (c) => (c.qty > 0 ? c.costPool / c.qty : c.lastAvg || 0);
+
+function applyAcquire(cards, data, qty, unitCost, source) {
+  const q = Math.max(1, Math.round(qty || 1));
+  const key = makeKey(data);
+  const lot = { id: uid(), date: Date.now(), qty: q, unitCost, source: source || "Bought" };
+  const idx = cards.findIndex((c) => c.key === key);
+  if (idx >= 0) {
+    const c = cards[idx];
+    const next = { ...c, qty: c.qty + q, costPool: c.costPool + q * unitCost, lots: [lot, ...c.lots] };
+    if (data.market && !c.priced) { next.market = data.market; next.priced = true; }
+    if (data.series && !c.series) { next.series = data.series; next.border = borderOf(data.series); }
+    if (data.tcgId && !c.tcgId) next.tcgId = data.tcgId;
+    const copy = [...cards]; copy[idx] = next; return copy;
+  }
+  const market = num(data.market) || unitCost;
+  return [{
+    id: uid(), key, name: data.name || "Unnamed", set: data.set || "", number: data.number || "",
+    printing: data.printing || "Normal", condition: data.condition || "NM", kind: data.kind || "single",
+    graded: !!data.graded, series: data.series || "", border: borderOf(data.series),
+    tcgId: data.tcgId || null, qty: q, costPool: q * unitCost, lots: [lot], soldQty: 0, lastAvg: unitCost,
+    market, priced: !!num(data.market), pricedAt: data.market ? Date.now() : null,
+    history: data.market ? [{ d: Date.now(), v: market }] : [],
+    sticker: null, zone: null, added: Date.now(), lastSold: null,
+  }, ...cards];
+}
+
+function applySale(cards, cardId, qty) {
+  const idx = cards.findIndex((c) => c.id === cardId);
+  if (idx < 0) return { cards, unitCost: 0, qty: 0 };
+  const c = cards[idx];
+  const q = Math.min(Math.max(1, Math.round(qty || 1)), c.qty);
+  const avg = avgCost(c);
+  const copy = [...cards];
+  copy[idx] = { ...c, qty: c.qty - q, costPool: Math.max(0, c.costPool - avg * q), soldQty: (c.soldQty || 0) + q, lastAvg: avg, lastSold: Date.now() };
+  return { cards: copy, unitCost: avg, qty: q };
+}
+
+function mergeCards(cards, sourceId, targetId) {
+  const s = cards.find((c) => c.id === sourceId), t = cards.find((c) => c.id === targetId);
+  if (!s || !t) return cards;
+  return cards.filter((c) => c.id !== sourceId).map((c) => c.id !== targetId ? c : {
+    ...c, qty: c.qty + s.qty, costPool: c.costPool + s.costPool,
+    soldQty: (c.soldQty || 0) + (s.soldQty || 0),
+    lots: [...c.lots, ...s.lots].sort((a, b) => b.date - a.date),
+  });
+}
+
+function migrate(old) {
+  return {
+    ...BLANK, ...old,
+    cards: (old.cards || []).map((c) => ({
+      ...c, graded: !!c.graded, series: c.series || "", border: c.border || borderOf(c.series),
+      history: c.history || (c.market ? [{ d: Date.now(), v: c.market }] : []),
+      sticker: c.sticker ?? null, zone: c.zone ?? null, lastSold: c.lastSold ?? null,
+    })),
+  };
+}
+
+/* ============================== APP ============================== */
+function BoothBook() {
+  const [db, setDb] = useState(BLANK);
+  const [ready, setReady] = useState(false);
+  const [tab, setTab] = useState("attention");
+  const [sheet, setSheet] = useState(null);
+  const [toast, setToast] = useState(null);
+  const loaded = useRef(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await window.storage.get(KEY);
+        if (r?.value) { setDb({ ...BLANK, ...JSON.parse(r.value) }); loaded.current = true; setReady(true); return; }
+      } catch (e) {}
+      try { const o = await window.storage.get(OLDKEY); if (o?.value) setDb(migrate(JSON.parse(o.value))); } catch (e) {}
+      loaded.current = true; setReady(true);
+    })();
+  }, []);
+  useEffect(() => {
+    if (!loaded.current) return;
+    (async () => { try { await window.storage.set(KEY, JSON.stringify(db)); } catch (e) { console.error(e); } })();
+  }, [db]);
+
+  const flash = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 2400); }, []);
+  const mult = db.priceMultiplier || 1;
+
+  const m = useMemo(() => {
+    const live = db.cards.filter((c) => c.qty > 0);
+    const invCost = sum(live, (c) => c.costPool) + (db.dollarBin?.costPool || 0);
+    const invMarket = sum(live, (c) => valueOf(c, mult) * c.qty) + (db.dollarBin?.qty || 0) * 1;
+    const byMethod = {}; METHODS.forEach((k) => { byMethod[k] = 0; });
+    db.ledger.forEach((l) => { byMethod[METHODS.includes(l.method) ? l.method : "Cash"] += l.amount; });
+    byMethod.Cash += db.startingCash;
+    const funds = Object.values(byMethod).reduce((a, b) => a + b, 0);
+    const revenue = sum(db.sales, (x) => x.price * x.qty);
+    const cogs = sum(db.sales, (x) => x.unitCost * x.qty);
+    return {
+      funds, byMethod, invCost, invMarket, company: funds + invMarket,
+      realized: revenue - cogs, unrealized: invMarket - invCost, revenue, cogs,
+      unitCount: sum(live, (c) => c.qty), titleCount: live.length,
+      cashPct: funds + invMarket > 0 ? (funds / (funds + invMarket)) * 100 : 0,
+    };
+  }, [db, mult]);
+
+  const attention = useMemo(() => {
+    const live = db.cards.filter((c) => c.qty > 0);
+    const relocate = [], reprice = [], watch = [], aging = [];
+    live.forEach((c) => {
+      const want = stickerFor(c, mult), zone = zoneFor(c, mult), has = carriesSticker(c, mult);
+      const skipped = c.snoozeTo === want;
+      const needsMove = !!c.zone && c.zone !== zone;
+      const needsTag = has && !skipped && c.sticker !== want;
+
+      let pct = null;
+      const h = c.history || [];
+      if (h.length >= 2) {
+        const now = h[h.length - 1].v;
+        const past = [...h].reverse().find((p) => Date.now() - p.d >= 6 * DAY);
+        if (past && past.v > 0) pct = ((now - past.v) / past.v) * 100;
+      }
+      const moving = pct != null && Math.abs(pct) >= (db.watchPct || 15);
+      const held = daysSince(c.added);
+      const idle = !c.lastSold && held != null && held > 90 ? held : null;
+
+      const item = { c, want, from: c.sticker, zone, fromZone: c.zone, has, pct, idle, value: valueOf(c, mult) };
+      if (needsMove) relocate.push(item);
+      else if (needsTag) reprice.push(item);
+      else if (moving) watch.push(item);
+      else if (idle) aging.push(item);
+    });
+    const jump = (x) => Math.abs(x.want - (x.from ?? 0));
+    relocate.sort((a, b) => b.value - a.value);
+    reprice.sort((a, b) => jump(b) - jump(a));
+    watch.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+    aging.sort((a, b) => b.idle - a.idle);
+    return { relocate, reprice, watch, aging, total: reprice.length + relocate.length };
+  }, [db, mult]);
+
+  const commitDeal = (draft) => {
+    const { sold, tradeIn, payments, change, thumbs, note, discount, binQty } = draft;
+    setDb((d) => {
+      let cards = [...d.cards]; const sales = [];
+      sold.forEach((r) => {
+        const qty = Math.max(1, Math.round(num(r.qty) || 1)), price = num(r.price);
+        if (r.matchedCardId) {
+          const res = applySale(cards, r.matchedCardId, qty); cards = res.cards;
+          sales.push({ id: uid(), date: Date.now(), cardId: r.matchedCardId, name: r.name, set: r.set, qty: res.qty, price, unitCost: res.unitCost, showId: d.activeShowId });
+        } else {
+          sales.push({ id: uid(), date: Date.now(), cardId: null, name: r.name, set: r.set, qty, price, unitCost: num(r.cost), showId: d.activeShowId, untracked: true });
+        }
+      });
+      tradeIn.forEach((r) => {
+        cards = applyAcquire(cards, {
+          name: r.name, set: r.set, number: r.number, printing: r.printing || "Normal",
+          condition: r.condition || "NM", kind: r.kind, market: r.market, tcgId: r.tcgId, series: r.series, graded: r.graded,
+        }, Math.max(1, Math.round(num(r.qty) || 1)), num(r.price), "Traded in");
+      });
+      const bq = Math.max(0, Math.round(num(binQty) || 0));
+      let bin = d.dollarBin || BLANK.dollarBin;
+      if (bq > 0) {
+        const unit = bin.qty > 0 ? bin.costPool / bin.qty : 0;
+        bin = { ...bin, qty: Math.max(0, bin.qty - bq), costPool: Math.max(0, bin.costPool - unit * bq) };
+        sales.push({ id: uid(), date: Date.now(), cardId: null, name: `${bq}x dollar binder`, set: "", qty: bq, price: 1, unitCost: unit, showId: d.activeShowId, untracked: true });
+      }
+      const entries = [];
+      payments.filter((p) => num(p.amount) > 0).forEach((p) =>
+        entries.push({ id: uid(), date: Date.now(), amount: num(p.amount), method: p.method, type: "payment", note: note || "Deal payment", showId: d.activeShowId }));
+      change.filter((p) => num(p.amount) > 0).forEach((p) =>
+        entries.push({ id: uid(), date: Date.now(), amount: -num(p.amount), method: p.method, type: "change", note: note ? `Change · ${note}` : "Change out", showId: d.activeShowId }));
+      const deal = {
+        id: uid(), date: Date.now(), showId: d.activeShowId, note, discount,
+        soldTotal: sum(sold, (r) => num(r.price) * (num(r.qty) || 1)) + bq,
+        tradeTotal: sum(tradeIn, (r) => num(r.price) * (num(r.qty) || 1)),
+        paidIn: sum(payments, (p) => num(p.amount)), changeOut: sum(change, (p) => num(p.amount)),
+        soldCount: sold.length + (bq > 0 ? 1 : 0), tradeCount: tradeIn.length, thumb: thumbs[0] || null,
+      };
+      return { ...d, cards, dollarBin: bin, sales: [...sales, ...d.sales], deals: [deal, ...d.deals].slice(0, 60), ledger: [...entries, ...d.ledger] };
+    });
+    const net = sum(payments, (p) => num(p.amount)) - sum(change, (p) => num(p.amount));
+    flash(`Deal booked · ${net >= 0 ? "+" : ""}${money(net)} net`);
+  };
+
+  const acquire = (data, qty, unitCost, payWithCash, source) => {
+    setDb((d) => {
+      const spend = unitCost * Math.max(1, Math.round(qty || 1));
+      return {
+        ...d, cards: applyAcquire(d.cards, data, qty, unitCost, source),
+        ledger: payWithCash && spend > 0
+          ? [{ id: uid(), date: Date.now(), amount: -spend, method: "Cash", type: "buy", note: `Bought ${qty}x ${data.name}`, showId: d.activeShowId }, ...d.ledger]
+          : d.ledger,
+      };
+    });
+    flash(`Added ${qty}x ${data.name}`);
+  };
+
+  const sellCard = (card, qty, price, method) => {
+    setDb((d) => {
+      const res = applySale(d.cards, card.id, qty);
+      return {
+        ...d, cards: res.cards,
+        sales: [{ id: uid(), date: Date.now(), cardId: card.id, name: card.name, set: card.set, qty: res.qty, price, unitCost: res.unitCost, showId: d.activeShowId }, ...d.sales],
+        ledger: [{ id: uid(), date: Date.now(), amount: price * res.qty, method, type: "sale", note: `Sold ${res.qty}x ${card.name}`, showId: d.activeShowId }, ...d.ledger],
+      };
+    });
+    flash(`${money(price * Math.min(qty, card.qty))} in`);
+  };
+
+  const addLedger = (amount, type, note, method) =>
+    setDb((d) => ({ ...d, ledger: [{ id: uid(), date: Date.now(), amount, type, note, method, showId: d.activeShowId }, ...d.ledger] }));
+  const updateCard = (id, patch) => setDb((d) => ({ ...d, cards: d.cards.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
+  const deleteCard = (id) => setDb((d) => ({ ...d, cards: d.cards.filter((c) => c.id !== id) }));
+  const doMerge = (s, t) => { setDb((d) => ({ ...d, cards: mergeCards(d.cards, s, t) })); flash("Copies pooled"); };
+
+  const confirmSticker = (id) => setDb((d) => ({ ...d, cards: d.cards.map((c) => (c.id === id ? { ...c, sticker: stickerFor(c, mult), snoozeTo: null } : c)) }));
+  const confirmZone = (id) => setDb((d) => ({ ...d, cards: d.cards.map((c) => (c.id === id ? { ...c, zone: zoneFor(c, mult), sticker: carriesSticker(c, mult) ? stickerFor(c, mult) : null, snoozeTo: null } : c)) }));
+  const confirmAllStickers = (ids) => {
+    const set2 = new Set(ids);
+    setDb((d) => ({ ...d, cards: d.cards.map((c) => (set2.has(c.id) ? { ...c, sticker: stickerFor(c, mult), snoozeTo: null } : c)) }));
+    flash(`${set2.size} marked as reprinted`);
+  };
+  const snooze = (id) => { setDb((d) => ({ ...d, cards: d.cards.map((c) => (c.id === id ? { ...c, snoozeTo: stickerFor(c, mult) } : c)) })); flash("Left as is"); };
+
+  const toggleShow = (name) => setDb((d) => {
+    if (d.activeShowId) return { ...d, shows: d.shows.map((s) => (s.id === d.activeShowId ? { ...s, ended: Date.now() } : s)), activeShowId: null };
+    const s = { id: uid(), name: name || "Show " + new Date().toLocaleDateString(), started: Date.now(), ended: null };
+    return { ...d, shows: [s, ...d.shows], activeShowId: s.id };
+  });
+
+  const doExportBook = async () => {
+    const json = await exportBook();
+    const blob = new Blob([json], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = `boothbook-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    flash("Backup downloaded");
+  };
+
+  const publicCatalog = () => {
+    const live = db.cards.filter((c) => c.qty > 0 && !c.graded && carriesSticker(c, mult));
+    return live.map((c) => ({
+      id: c.id, name: c.name, set: c.set, number: c.number, printing: c.printing,
+      condition: c.condition, price: c.sticker ?? stickerFor(c, mult), qty: c.qty,
+    }));
+  };
+  const doExportCatalog = () => {
+    const json = JSON.stringify(publicCatalog(), null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "catalog.json";
+    a.click();
+    flash("catalog.json downloaded — replace the one in the repo root to update the shop");
+  };
+
+  if (!ready) return <div className="min-h-screen flex items-center justify-center" style={{ background: C.ink, color: C.muted }}><Loader2 className="animate-spin" size={22} /></div>;
+  const activeShow = db.shows.find((s) => s.id === db.activeShowId) || null;
+
+  return (
+    <div className="min-h-screen pb-24" style={{ background: C.ink, color: C.text, fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
+      <Header m={m} show={activeShow} alerts={attention.total} onExportBook={doExportBook} onExportCatalog={doExportCatalog} />
+      <div className="px-4 mt-4">
+        {tab === "attention" && <AttentionTab db={db} setDb={setDb} a={attention} mult={mult} flash={flash}
+          onConfirmSticker={confirmSticker} onConfirmZone={confirmZone} onConfirmAll={confirmAllStickers} onSnooze={snooze} onOpen={(c) => setSheet({ kind: "card", payload: c })} />}
+        {tab === "deal" && <DealTab db={db} onCommit={commitDeal} mult={mult} />}
+        {tab === "stock" && <StockTab db={db} m={m} mult={mult} setDb={setDb} flash={flash} onAdd={() => setSheet({ kind: "add" })} onOpen={(c) => setSheet({ kind: "card", payload: c })} onSell={(c) => setSheet({ kind: "sell", payload: c })} />}
+        {tab === "cash" && <CashTab db={db} m={m} setDb={setDb} onEntry={() => setSheet({ kind: "ledger" })} />}
+        {tab === "stats" && <StatsTab db={db} m={m} setDb={setDb} onToggleShow={toggleShow} active={activeShow} />}
+      </div>
+      <Nav tab={tab} setTab={setTab} alerts={attention.total} />
+      {toast && <div className="fixed left-0 right-0 flex justify-center px-4" style={{ bottom: 92, zIndex: 60 }}>
+        <div className="px-4 py-3 rounded-xl text-sm font-medium shadow-lg" style={{ background: C.teal, color: C.ink }}>{toast}</div></div>}
+
+      {sheet?.kind === "sell" && <SellSheet card={sheet.payload} mult={mult} onClose={() => setSheet(null)} onConfirm={(q, p, mth) => { sellCard(sheet.payload, q, p, mth); setSheet(null); }} />}
+      {sheet?.kind === "add" && <AddSheet onClose={() => setSheet(null)} onConfirm={(data, qty, cost, pay) => { acquire(data, qty, cost, pay, "Bought"); setSheet(null); }} />}
+      {sheet?.kind === "card" && <CardSheet card={db.cards.find((c) => c.id === sheet.payload.id)} all={db.cards} tcgKey={db.tcgKey} mult={mult}
+        onClose={() => setSheet(null)} onSave={updateCard} onDelete={(id) => { deleteCard(id); setSheet(null); }}
+        onMerge={(s, t) => { doMerge(s, t); setSheet(null); }}
+        onAddLot={(id, qty, cost, pay) => { const c = db.cards.find((x) => x.id === id); acquire({ ...c }, qty, cost, pay, "Bought"); setSheet(null); }} />}
+      {sheet?.kind === "ledger" && <LedgerSheet onClose={() => setSheet(null)} onConfirm={(a, t, n, mth) => { addLedger(a, t, n, mth); setSheet(null); }} />}
+    </div>
+  );
+}
+
+/* ============================ HEADER ============================ */
+function Header({ m, show, alerts, onExportBook, onExportCatalog }) {
+  const [menu, setMenu] = useState(false);
+  return (
+    <div className="px-4 pt-5 pb-5" style={{ background: `linear-gradient(170deg, ${C.surface} 0%, ${C.ink} 100%)`, borderBottom: `1px solid ${C.line}` }}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-xs tracking-widest font-semibold" style={{ color: C.muted }}>TOWNSEND TCG</div>
+        <div className="flex items-center gap-2">
+          {show ? <div className="flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(58,217,196,0.14)", color: C.teal }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.teal }} />{show.name}</div>
+            : <div className="text-xs" style={{ color: C.muted }}>No show running</div>}
+          <button onClick={() => setMenu((v) => !v)} className="p-1.5 rounded-lg" style={{ background: C.surface2 }}><Download size={14} color={C.muted} /></button>
+        </div>
+      </div>
+      {menu && (
+        <div className="rounded-xl p-3 mb-4 space-y-2" style={{ background: C.surface2, border: `1px solid ${C.line}` }}>
+          <button onClick={() => { onExportBook(); setMenu(false); }} className="w-full text-left text-xs rounded-lg py-2.5 px-3" style={{ background: C.surface, color: C.text }}>Download full backup (private)</button>
+          <button onClick={() => { onExportCatalog(); setMenu(false); }} className="w-full text-left text-xs rounded-lg py-2.5 px-3" style={{ background: C.surface, color: C.text }}>Download catalog.json for the shop (no cost data)</button>
+        </div>
+      )}
+      <div className="text-xs uppercase tracking-wider mb-1" style={{ color: C.muted }}>Company value</div>
+      <div className="font-mono font-bold leading-none mb-4" style={{ fontSize: 42, letterSpacing: "-0.03em" }}>{money(m.company)}</div>
+      <div className="h-2.5 rounded-full overflow-hidden flex mb-2" style={{ background: C.surface2 }}>
+        <div style={{ width: `${m.cashPct}%`, background: C.teal, transition: "width 400ms ease" }} />
+        <div style={{ width: `${100 - m.cashPct}%`, background: C.purple, transition: "width 400ms ease" }} />
+      </div>
+      <div className="flex justify-between text-xs mb-4">
+        <span style={{ color: C.teal }}>Funds {money0(m.funds)}</span>
+        <span style={{ color: C.purple }}>Stock {money0(m.invMarket)}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Stat label="Realized" hint="sales over avg cost" value={m.realized} />
+        <Stat label="Unrealized" hint="stock over avg cost" value={m.unrealized} />
+      </div>
+    </div>
+  );
+}
+function Stat({ label, hint, value }) {
+  const pos = value >= 0;
+  return (
+    <div className="rounded-xl p-3" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+      <div className="flex items-center gap-1 mb-1">
+        {pos ? <ArrowUpRight size={13} color={C.teal} /> : <ArrowDownRight size={13} color={C.loss} />}
+        <span className="text-xs font-semibold" style={{ color: C.muted }}>{label}</span>
+      </div>
+      <div className="font-mono font-bold text-xl" style={{ color: pos ? C.teal : C.loss }}>{pos ? "+" : ""}{money0(value)}</div>
+      <div className="text-xs mt-0.5" style={{ color: C.muted }}>{hint}</div>
+    </div>
+  );
+}
+
+/* =========================== ATTENTION =========================== */
+function AttentionTab({ db, setDb, a, mult, onConfirmSticker, onConfirmZone, onConfirmAll, onSnooze, onOpen, flash }) {
+  const [busy, setBusy] = useState(false); const [prog, setProg] = useState(0);
+  const [open, setOpen] = useState("relocate");
+
+  const refreshAll = async () => {
+    const live = db.cards.filter((c) => c.qty > 0 && c.kind !== "sealed");
+    setBusy(true); setProg(0); let hits = 0;
+    for (let n = 0; n < live.length; n++) {
+      const c = live[n];
+      try {
+        const res = await tcgLookup(c.name, c.set, c.number, db.tcgKey);
+        if (res) {
+          hits++;
+          setDb((d) => ({
+            ...d, cards: d.cards.map((x) => x.id === c.id ? {
+              ...x, market: res.market, priced: true, pricedAt: Date.now(),
+              series: x.series || res.series, border: x.border || borderOf(res.series),
+              history: [...(x.history || []), { d: Date.now(), v: res.market }].slice(-40),
+            } : x),
+          }));
+        }
+      } catch {}
+      setProg(Math.round(((n + 1) / live.length) * 100));
+    }
+    setBusy(false);
+    setDb((d) => ({ ...d, lastCheck: Date.now() }));
+    flash(`Refreshed ${hits} of ${live.length}`);
+  };
+
+  const bin = db.dollarBin || BLANK.dollarBin;
+  const lowBin = bin.qty > 0 && bin.qty < (bin.refillAt || 100);
+
+  const checkDay = db.checkDay ?? 5;
+  const since = daysSince(db.lastCheck);
+  const isCheckDay = new Date().getDay() === checkDay;
+  const due = since == null || since >= 7 || (isCheckDay && since >= 1);
+  const status = since == null ? "Never run"
+    : since === 0 ? "Checked today"
+    : since === 1 ? "Checked yesterday"
+    : `Checked ${since} days ago`;
+
+  return (
+    <div>
+      <div className="rounded-xl p-4 mb-3" style={{ background: C.surface, border: `1px solid ${due ? "rgba(240,184,73,0.45)" : C.line}` }}>
+        <div className="flex items-center gap-2 mb-1">
+          <Clock size={14} color={due ? C.gold : C.muted} />
+          <span className="text-sm font-semibold">{due ? "Price check is due" : status}</span>
+        </div>
+        <div className="text-xs" style={{ color: C.muted }}>
+          {due ? `${status} · you reprice ${DAYNAMES[checkDay]}s` : `Next run ${DAYNAMES[checkDay]}`}
+        </div>
+      </div>
+
+      <button onClick={refreshAll} disabled={busy}
+        className="w-full flex items-center justify-center gap-2 rounded-xl py-4 mb-4 font-semibold active:opacity-80"
+        style={{ background: busy ? C.surface2 : due ? C.teal : C.surface2, color: busy ? C.gold : due ? C.ink : C.text }}>
+        {busy ? <><Loader2 size={17} className="animate-spin" /> Checking prices {prog}%</> : <><RefreshCw size={17} /> Run the weekly price check</>}
+      </button>
+
+      {a.total === 0 && a.watch.length === 0 && (
+        <div className="rounded-xl p-6 text-center mb-4" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+          <Check size={26} color={C.teal} className="mx-auto mb-2" />
+          <div className="text-sm font-semibold mb-1">Every sticker is current</div>
+          <div className="text-xs" style={{ color: C.muted }}>Nothing needs reprinting or moving.</div>
+        </div>
+      )}
+
+      {lowBin && (
+        <div className="rounded-xl p-3.5 mb-3 flex items-center gap-3" style={{ background: C.surface, border: `1px solid rgba(240,184,73,0.4)` }}>
+          <Package size={18} color={C.gold} className="shrink-0" />
+          <div className="flex-1"><div className="text-sm font-semibold">Dollar binder running low</div>
+            <div className="text-xs" style={{ color: C.muted }}>{bin.qty} cards left</div></div>
+        </div>
+      )}
+
+      <Group id="relocate" open={open} setOpen={setOpen} Icon={MoveRight} tint={C.purple}
+        title="Move and re-tag" count={a.relocate.length} hint="crossed a case or binder line">
+        {a.relocate.map((x) => (
+          <Row key={x.c.id} card={x.c} onOpen={() => onOpen(x.c)} onDone={() => onConfirmZone(x.c.id)}
+            right={<div className="text-right">
+              <div className="text-xs font-semibold" style={{ color: C.purple }}>{ZONES[x.zone].short}</div>
+              <div className="font-mono text-xs" style={{ color: x.has ? C.gold : C.muted }}>{x.has ? `tag $${x.want}` : "no tag"}</div>
+            </div>}
+            sub={sublineFor(x, `from ${ZONES[x.fromZone].short}`)} />
+        ))}
+      </Group>
+
+      <Group id="reprice" open={open} setOpen={setOpen} Icon={Tag} tint={C.gold}
+        title="Reprint stickers" count={a.reprice.length} hint="printed price no longer matches market">
+        {a.reprice.length > 1 && (
+          <button onClick={() => onConfirmAll(a.reprice.map((x) => x.c.id))} className="w-full rounded-lg py-2.5 mb-2 text-xs font-semibold" style={{ background: C.surface2, color: C.muted }}>
+            Mark all {a.reprice.length} as reprinted
+          </button>
+        )}
+        {a.reprice.map((x) => (
+          <Row key={x.c.id} card={x.c} onOpen={() => onOpen(x.c)} onDone={() => onConfirmSticker(x.c.id)} onSkip={() => onSnooze(x.c.id)}
+            right={<div className="flex items-center gap-1.5 font-mono text-sm">
+              {x.from != null && <span style={{ color: C.muted, textDecoration: "line-through" }}>${x.from}</span>}
+              <MoveRight size={13} color={C.muted} />
+              <span style={{ color: x.want > (x.from ?? 0) ? C.teal : C.loss }}>${x.want}</span>
+            </div>}
+            sub={sublineFor(x, ZONES[x.zone].short)} />
+        ))}
+      </Group>
+
+      <Group id="watch" open={open} setOpen={setOpen} Icon={Activity} tint={C.teal}
+        title="Moving fast" count={a.watch.length} hint="big swing, sticker still right">
+        {a.watch.map((x) => (
+          <Row key={x.c.id} card={x.c} onOpen={() => onOpen(x.c)}
+            right={<div className="font-mono text-sm" style={{ color: x.pct >= 0 ? C.teal : C.loss }}>{x.pct >= 0 ? "+" : ""}{x.pct.toFixed(0)}%</div>}
+            sub={sublineFor(x, `${ZONES[x.zone].short} · 7 days`)} />
+        ))}
+      </Group>
+
+      <Group id="aging" open={open} setOpen={setOpen} Icon={Clock} tint={C.muted}
+        title="Not moving" count={a.aging.length} hint="correctly priced, still sitting">
+        {a.aging.slice(0, 30).map((x) => (
+          <Row key={x.c.id} card={x.c} onOpen={() => onOpen(x.c)}
+            right={<div className="text-xs" style={{ color: C.muted }}>{x.idle}d</div>}
+            sub={sublineFor(x, `${ZONES[x.zone].short} · tag $${x.c.sticker ?? x.want}`)} />
+        ))}
+      </Group>
+
+      <div className="rounded-xl p-4 mt-5" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+        <div className="text-xs mb-2" style={{ color: C.muted }}>Reprice day</div>
+        <div className="flex gap-1">
+          {DAYNAMES.map((d, i) => (
+            <button key={d} onClick={() => setDb((x) => ({ ...x, checkDay: i }))} className="flex-1 py-2 rounded text-xs font-semibold"
+              style={{ background: checkDay === i ? C.teal : C.surface2, color: checkDay === i ? C.ink : C.muted }}>{d.slice(0, 1)}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="text-xs mt-4 px-1 leading-relaxed" style={{ color: C.muted }}>
+        Each card appears once, in the list for the work it needs. A move already includes a new sticker, so it won't
+        also show up under reprinting. Case stickers land on the nearest $5, binder stickers on the nearest dollar,
+        and nothing is flagged unless the printed number would actually change. Dismissing with the X leaves a
+        sticker alone until the price moves off that number again.
+      </div>
+    </div>
+  );
+}
+
+function sublineFor(x, lead) {
+  const bits = [lead, `market ${money(x.value)}`];
+  if (x.pct != null && Math.abs(x.pct) >= 10) bits.push(`${x.pct >= 0 ? "+" : ""}${x.pct.toFixed(0)}% this week`);
+  if (x.idle) bits.push(`held ${x.idle}d`);
+  const over = x.value > 0 && x.c.sticker ? ((x.c.sticker - x.value) / x.value) * 100 : 0;
+  if (over > 12) bits.push(`${over.toFixed(0)}% over market`);
+  return bits.join(" · ");
+}
+
+function Group({ id, open, setOpen, Icon, tint, title, count, hint, children }) {
+  const isOpen = open === id;
+  return (
+    <div className="mb-2.5">
+      <button onClick={() => setOpen(isOpen ? "" : id)} className="w-full flex items-center gap-3 rounded-xl p-3.5"
+        style={{ background: C.surface, border: `1px solid ${count > 0 ? tint + "55" : C.line}` }}>
+        <Icon size={17} color={count > 0 ? tint : C.muted} className="shrink-0" />
+        <div className="flex-1 text-left">
+          <div className="text-sm font-semibold">{title}</div>
+          <div className="text-xs" style={{ color: C.muted }}>{hint}</div>
+        </div>
+        <div className="font-mono font-bold text-lg shrink-0" style={{ color: count > 0 ? tint : C.muted }}>{count}</div>
+      </button>
+      {isOpen && count > 0 && <div className="space-y-1.5 mt-1.5 pl-1">{children}</div>}
+    </div>
+  );
+}
+
+function Row({ card, sub, right, onOpen, onDone, onSkip }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg px-3 py-2.5" style={{ background: C.surface2 }}>
+      <button onClick={onOpen} className="flex-1 min-w-0 text-left">
+        <div className="text-sm truncate">{card.name}</div>
+        <div className="text-xs truncate" style={{ color: C.muted }}>{sub}</div>
+      </button>
+      <div className="shrink-0">{right}</div>
+      {onSkip && <button onClick={onSkip} title="Leave the sticker as is" className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: C.surface }}>
+        <X size={15} color={C.muted} /></button>}
+      {onDone && <button onClick={onDone} className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: C.surface }}>
+        <Check size={16} color={C.teal} /></button>}
+    </div>
+  );
+}
+
+/* ============================= DEAL ============================= */
+const emptyDraft = () => ({ sold: [], tradeIn: [], payments: [{ id: uid(), amount: "", method: "Cash" }], change: [], thumbs: [], note: "", binQty: "" });
+
+function DealTab({ db, onCommit, mult }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(emptyDraft);
+  const [reading, setReading] = useState(false);
+  const [err, setErr] = useState("");
+  const fileRef = useRef(null);
+
+  const T = useMemo(() => {
+    const soldTotal = sum(draft.sold, (r) => num(r.price) * (num(r.qty) || 1)) + (num(draft.binQty) || 0);
+    const tradeTotal = sum(draft.tradeIn, (r) => num(r.price) * (num(r.qty) || 1));
+    const paidIn = sum(draft.payments, (p) => num(p.amount));
+    const changeOut = sum(draft.change, (p) => num(p.amount));
+    return { soldTotal, tradeTotal, paidIn, changeOut, toCustomer: soldTotal + changeOut, toMe: paidIn + tradeTotal, gap: paidIn + tradeTotal - (soldTotal + changeOut), net: paidIn - changeOut };
+  }, [draft]);
+
+  const setRow = (b, id, p) => setDraft((d) => ({ ...d, [b]: d[b].map((r) => (r.id === id ? { ...r, ...p } : r)) }));
+  const dropRow = (b, id) => setDraft((d) => ({ ...d, [b]: d[b].filter((r) => r.id !== id) }));
+  const moveRow = (from, to, id) => setDraft((d) => {
+    const r = d[from].find((x) => x.id === id); if (!r) return d;
+    return { ...d, [from]: d[from].filter((x) => x.id !== id), [to]: [...d[to], { ...r, matchedCardId: to === "tradeIn" ? null : r.matchedCardId }] };
+  });
+  const addRow = (b) => setDraft((d) => ({ ...d, [b]: [...d[b], { id: uid(), name: "", set: "", number: "", kind: "single", printing: "Normal", condition: "NM", qty: "1", price: "", market: null, priceState: "idle" }] }));
+  const addMoney = (b) => setDraft((d) => ({ ...d, [b]: [...d[b], { id: uid(), amount: "", method: "Cash" }] }));
+  const setMoney = (b, id, p) => setDraft((d) => ({ ...d, [b]: d[b].map((r) => (r.id === id ? { ...r, ...p } : r)) }));
+  const dropMoney = (b, id) => setDraft((d) => ({ ...d, [b]: d[b].filter((r) => r.id !== id) }));
+
+  const priceRows = async (rows, bucket) => {
+    for (const r of rows) {
+      if (r.kind === "sealed") continue;
+      setRow(bucket, r.id, { priceState: "loading" });
+      try {
+        const res = await tcgLookup(r.name, r.set, r.number, db.tcgKey);
+        setRow(bucket, r.id, res ? {
+          priceState: "done", market: res.market, set: res.set || r.set, number: res.number || r.number,
+          printing: res.printing || r.printing, tcgId: res.tcgId, series: res.series,
+          price: r.price || String(Math.round(res.market * 100) / 100),
+        } : { priceState: "miss" });
+      } catch { setRow(bucket, r.id, { priceState: "miss" }); }
+    }
+  };
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    setErr(""); setReading(true); setOpen(true);
+    try {
+      const big = await resize(file, 1600, 0.85), small = await resize(file, 260, 0.5);
+      const res = await fetch(visionUrl(), {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6", max_tokens: 1000,
+          messages: [{ role: "user", content: [
+            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: big.split(",")[1] } },
+            { type: "text", text: `This photo shows a Pokemon TCG table transaction: cards and possibly cash. Identify every distinct card or sealed product visible. Read the card name, the set name if legible, and the collector number if visible. Note reverse holo or holo if you can tell, and whether a card is in a graded slab. Also estimate total US dollars of visible cash; bills may overlap, so lower confidence accordingly.
+
+Respond with ONLY JSON, no fences, no preamble:
+{"cards":[{"name":"","set":"","number":"","printing":"Normal|Holo|Reverse","graded":false,"kind":"single|sealed","confidence":"high|medium|low"}],"cash":<number>}
+
+Use empty strings for unreadable fields. Use 0 if no cash is visible.` },
+          ] }],
+        }),
+      });
+      if (!res.ok) throw new Error("no backend");
+      const data = await res.json();
+      const text = data.content.filter((c) => c.type === "text").map((c) => c.text).join("\n");
+      const match = text.replace(/```json|```/g, "").trim().match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match ? match[0] : "{}");
+      const cards = parsed.cards || [];
+      if (!cards.length) setErr("No cards read. Try a flatter angle with less glare, or add rows by hand.");
+      const live = db.cards.filter((c) => c.qty > 0);
+      const soldNew = [], tradeNew = [];
+      cards.forEach((c) => {
+        const hit = live.find((i) => i.name.toLowerCase().includes((c.name || "").toLowerCase().slice(0, 14)) ||
+          (c.name || "").toLowerCase().includes(i.name.toLowerCase().slice(0, 14)));
+        const row = {
+          id: uid(), name: c.name || "Unknown card", set: c.set || "", number: c.number || "",
+          kind: c.kind === "sealed" ? "sealed" : "single", printing: PRINTINGS.includes(c.printing) ? c.printing : "Normal",
+          condition: "NM", graded: !!c.graded, confidence: c.confidence || "medium", qty: "1",
+          price: hit ? String(hit.sticker || Math.round(valueOf(hit, mult))) : "",
+          matchedCardId: hit?.id || null, matchedAvg: hit ? avgCost(hit) : null, market: hit?.market || null, priceState: "idle",
+        };
+        (hit ? soldNew : tradeNew).push(row);
+      });
+      setDraft((d) => {
+        const next = { ...d, sold: [...d.sold, ...soldNew], tradeIn: [...d.tradeIn, ...tradeNew], thumbs: [...d.thumbs, small] };
+        if (parsed.cash > 0 && !d.payments.some((p) => num(p.amount) > 0)) next.payments = [{ id: uid(), amount: String(parsed.cash), method: "Cash" }];
+        return next;
+      });
+      setReading(false);
+      priceRows(soldNew, "sold"); priceRows(tradeNew, "tradeIn");
+    } catch (e) {
+      console.error(e);
+      setErr("Photo scanning isn't wired up on this deployment yet (needs a small backend). Add cards below by hand instead.");
+      setReading(false);
+    }
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const reset = () => { setDraft(emptyDraft()); setOpen(false); setErr(""); };
+  const canBook = draft.sold.length || draft.tradeIn.length || T.paidIn > 0 || num(draft.binQty) > 0;
+
+  if (!open) return (
+    <div>
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleFile} className="hidden" />
+      <button onClick={() => fileRef.current?.click()} className="w-full rounded-2xl py-9 flex flex-col items-center gap-3 mb-3 active:opacity-80"
+        style={{ background: `linear-gradient(150deg, ${C.purple} 0%, #6B4FD8 100%)`, color: "#fff" }}>
+        <Camera size={34} /><div className="font-semibold text-lg">Snap the deal</div>
+        <div className="text-xs opacity-80 px-8 text-center">Cards and cash in one shot</div>
+      </button>
+      <button onClick={() => setOpen(true)} className="w-full rounded-xl py-3.5 mb-5 text-sm font-semibold" style={{ background: C.surface2, color: C.text, border: `1px solid ${C.line}` }}>
+        Start a deal by hand
+      </button>
+      <Section title="Recent deals" />
+      {db.deals.length === 0 ? <Empty text="No deals booked yet." /> : (
+        <div className="space-y-2">
+          {db.deals.slice(0, 20).map((d) => (
+            <div key={d.id} className="flex items-center gap-3 rounded-xl p-3" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+              {d.thumb ? <img src={d.thumb} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                : <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0" style={{ background: C.surface2 }}><ImageIcon size={18} color={C.muted} /></div>}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm truncate">{d.note || `${d.soldCount} sold · ${d.tradeCount} taken in`}</div>
+                <div className="text-xs" style={{ color: C.muted }}>{money0(d.paidIn)} in · {money0(d.changeOut)} change · {new Date(d.date).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>
+              </div>
+              <div className="font-mono font-semibold text-sm shrink-0" style={{ color: (d.paidIn - d.changeOut) >= 0 ? C.teal : C.loss }}>{money0(d.paidIn - d.changeOut)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div>
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleFile} className="hidden" />
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex-1 flex gap-1.5">
+          {draft.thumbs.map((t, n) => <img key={n} src={t} alt="" className="w-11 h-11 rounded-lg object-cover" style={{ border: `1px solid ${C.line}` }} />)}
+          <button onClick={() => fileRef.current?.click()} className="w-11 h-11 rounded-lg flex items-center justify-center" style={{ background: C.surface2, border: `1px dashed ${C.line}` }}>
+            <Camera size={17} color={C.muted} /></button>
+        </div>
+        <button onClick={reset} className="p-2 rounded-lg" style={{ background: C.surface2 }}><X size={18} color={C.muted} /></button>
+      </div>
+      {reading && <div className="rounded-xl py-8 mb-4 flex flex-col items-center gap-2" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+        <Loader2 className="animate-spin" size={24} color={C.teal} /><div className="text-sm" style={{ color: C.muted }}>Reading the table</div></div>}
+      {err && <div className="rounded-xl p-3 mb-4 text-sm flex gap-2" style={{ background: "rgba(244,114,106,0.12)", color: C.loss }}>
+        <AlertTriangle size={16} className="shrink-0 mt-0.5" />{err}</div>}
+
+      <Leg n="1" title="Payments in" total={T.paidIn} color={C.teal} Icon={Banknote} onAdd={() => addMoney("payments")}>
+        {draft.payments.length === 0 && <Hint text="Nothing collected yet." />}
+        {draft.payments.map((p) => <MoneyRow key={p.id} p={p} tint={C.teal} onSet={(x) => setMoney("payments", p.id, x)} onDrop={() => dropMoney("payments", p.id)} />)}
+      </Leg>
+      <Leg n="2" title="Change out" total={T.changeOut} color={C.gold} Icon={CornerDownLeft} onAdd={() => addMoney("change")}>
+        {draft.change.length === 0 && <Hint text="No change given." />}
+        {draft.change.map((p) => <MoneyRow key={p.id} p={p} tint={C.gold} onSet={(x) => setMoney("change", p.id, x)} onDrop={() => dropMoney("change", p.id)} />)}
+      </Leg>
+      <Leg n="3" title="Cards sold" total={T.soldTotal} color={C.teal} Icon={ArrowUpRight} onAdd={() => addRow("sold")}>
+        {draft.sold.length === 0 && <Hint text="Nothing leaving the case." />}
+        {draft.sold.map((r) => <CardRow key={r.id} r={r} tint={C.teal} priceLabel="sold for each" showCondition={false}
+          onSet={(x) => setRow("sold", r.id, x)} onDrop={() => dropRow("sold", r.id)} onMove={() => moveRow("sold", "tradeIn", r.id)} moveLabel="Move to taken in" />)}
+        <div className="flex gap-2 items-center rounded-xl p-2.5" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+          <span className="text-sm flex-1 pl-1">Dollar binder</span>
+          <input value={draft.binQty} onChange={(e) => setDraft((d) => ({ ...d, binQty: e.target.value }))} inputMode="numeric" placeholder="qty"
+            className="w-20 rounded-lg py-2.5 px-2 text-center font-mono text-sm outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
+          <span className="font-mono text-sm w-16 text-right" style={{ color: C.teal }}>{money(num(draft.binQty) || 0)}</span>
+        </div>
+      </Leg>
+      <Leg n="4" title="Cards taken in" total={T.tradeTotal} color={C.purple} Icon={ArrowDownRight} onAdd={() => addRow("tradeIn")}>
+        {draft.tradeIn.length === 0 && <Hint text="Nothing coming across the table." />}
+        {draft.tradeIn.map((r) => <CardRow key={r.id} r={r} tint={C.purple} priceLabel="credit given each" showCondition
+          onSet={(x) => setRow("tradeIn", r.id, x)} onDrop={() => dropRow("tradeIn", r.id)} onMove={() => moveRow("tradeIn", "sold", r.id)} moveLabel="Move to sold" />)}
+      </Leg>
+
+      <div className="rounded-xl p-4 mb-3" style={{ background: C.surface, border: `1px solid ${Math.abs(T.gap) < 0.5 ? C.line : "rgba(240,184,73,0.45)"}` }}>
+        <div className="flex items-center gap-2 mb-3"><Scale size={15} color={C.muted} />
+          <span className="text-xs uppercase tracking-wider font-semibold" style={{ color: C.muted }}>Balance</span></div>
+        <div className="flex justify-between text-sm mb-1.5"><span style={{ color: C.muted }}>They gave you</span><span className="font-mono">{money(T.toMe)}</span></div>
+        <div className="flex justify-between text-sm mb-3"><span style={{ color: C.muted }}>You gave them</span><span className="font-mono">{money(T.toCustomer)}</span></div>
+        <div className="h-px mb-3" style={{ background: C.line }} />
+        {Math.abs(T.gap) < 0.5 ? <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: C.teal }}><Check size={16} /> Balanced</div>
+          : <div className="flex items-start gap-2 text-sm" style={{ color: C.gold }}><AlertTriangle size={15} className="shrink-0 mt-0.5" />
+              <span>{T.gap < 0 ? `You discounted ${money(Math.abs(T.gap))}.` : `You came out ${money(T.gap)} ahead.`}</span></div>}
+        <div className="flex justify-between text-sm mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
+          <span style={{ color: C.muted }}>Net into the drawer</span>
+          <span className="font-mono font-bold" style={{ color: T.net >= 0 ? C.teal : C.loss }}>{T.net >= 0 ? "+" : ""}{money(T.net)}</span>
+        </div>
+      </div>
+      <input value={draft.note} onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))} placeholder="Note (buyer name, trade terms)"
+        className="w-full rounded-lg py-3 px-3 mb-4 text-sm outline-none" style={{ background: C.surface, border: `1px solid ${C.line}`, color: C.text }} />
+      <BigBtn onClick={() => { onCommit({ ...draft, discount: T.gap }); reset(); }} disabled={!canBook}><Check size={18} /> Book this deal</BigBtn>
+    </div>
+  );
+}
+
+function Leg({ n, title, total, color, Icon, onAdd, children }) {
+  return (
+    <div className="mb-3">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-5 h-5 rounded flex items-center justify-center text-xs font-bold shrink-0" style={{ background: color, color: C.ink }}>{n}</div>
+        <Icon size={14} color={color} /><span className="text-sm font-semibold flex-1">{title}</span>
+        <span className="font-mono text-sm" style={{ color }}>{money(total)}</span>
+        <button onClick={onAdd} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.surface2 }}><Plus size={15} color={C.muted} /></button>
+      </div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+const Hint = ({ text }) => <div className="text-xs px-3 py-2.5 rounded-lg" style={{ color: C.muted, background: C.surface }}>{text}</div>;
+
+function MoneyRow({ p, tint, onSet, onDrop }) {
+  return (
+    <div className="flex gap-2 items-center rounded-xl p-2.5" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+      <input value={p.amount} onChange={(e) => onSet({ amount: e.target.value })} inputMode="decimal" placeholder="0.00"
+        className="flex-1 rounded-lg py-2.5 px-3 font-mono text-base outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: tint }} />
+      <select value={p.method} onChange={(e) => onSet({ method: e.target.value })} className="rounded-lg py-2.5 px-2 text-sm outline-none"
+        style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }}>
+        {METHODS.map((k) => <option key={k} value={k} style={{ background: C.surface }}>{k}</option>)}
+      </select>
+      <button onClick={onDrop} className="p-2 rounded-lg shrink-0" style={{ background: C.surface2 }}><X size={14} color={C.muted} /></button>
+    </div>
+  );
+}
+
+function CardRow({ r, tint, priceLabel, onSet, onDrop, onMove, moveLabel, showCondition }) {
+  const profit = r.matchedAvg != null && num(r.price) > 0 ? (num(r.price) - r.matchedAvg) * (num(r.qty) || 1) : null;
+  return (
+    <div className="rounded-xl p-3" style={{ background: C.surface, border: `1px solid ${tint}44` }}>
+      <div className="flex items-start gap-2 mb-2.5">
+        <div className="flex-1 min-w-0">
+          <input value={r.name} onChange={(e) => onSet({ name: e.target.value })} placeholder="Card name"
+            className="w-full bg-transparent font-semibold text-sm outline-none" style={{ color: C.text }} />
+          <div className="text-xs mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ color: C.muted }}>
+            <span className="truncate">{r.set || "set unknown"}{r.number ? ` · ${r.number}` : ""}{r.printing !== "Normal" ? ` · ${r.printing}` : ""}{r.graded ? " · graded" : ""}</span>
+            {r.confidence === "low" && <span style={{ color: C.gold }}>· check this one</span>}
+            {r.matchedCardId && <span style={{ color: C.teal }}>· avg {money(r.matchedAvg || 0)}</span>}
+          </div>
+        </div>
+        <button onClick={onDrop} className="p-1.5 rounded-lg shrink-0" style={{ background: C.surface2 }}><X size={14} color={C.muted} /></button>
+      </div>
+      {showCondition && <div className="flex gap-1 mb-2">
+        {CONDITIONS.map((k) => <button key={k} onClick={() => onSet({ condition: k })} className="flex-1 py-1.5 rounded text-xs font-semibold"
+          style={{ background: r.condition === k ? tint : C.surface2, color: r.condition === k ? C.ink : C.muted }}>{k}</button>)}
+      </div>}
+      <div className="flex gap-2 items-center mb-2">
+        <input value={r.qty} onChange={(e) => onSet({ qty: e.target.value })} inputMode="numeric"
+          className="w-14 rounded-lg py-2.5 px-2 text-center font-mono text-sm outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
+        <input value={r.price} onChange={(e) => onSet({ price: e.target.value })} inputMode="decimal" placeholder={priceLabel}
+          className="flex-1 rounded-lg py-2.5 px-3 font-mono text-sm outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
+        <div className="text-xs font-mono w-20 text-right shrink-0" style={{ color: profit != null ? (profit >= 0 ? C.teal : C.loss) : C.muted }}>
+          {r.priceState === "loading" ? <Loader2 size={13} className="animate-spin inline" />
+            : profit != null ? `${profit >= 0 ? "+" : ""}${money0(profit)}`
+            : r.market ? `mkt ${money0(r.market)}` : r.priceState === "miss" ? "no match" : ""}
+        </div>
+      </div>
+      <button onClick={onMove} className="flex items-center gap-1.5 text-xs" style={{ color: C.muted }}><ArrowLeftRight size={12} /> {moveLabel}</button>
+    </div>
+  );
+}
+
+/* ============================ STOCK ============================= */
+function StockTab({ db, m, mult, onAdd, onOpen, onSell, setDb, flash }) {
+  const [q, setQ] = useState(""); const [zone, setZone] = useState("all");
+  const live = db.cards.filter((c) => c.qty > 0);
+  const filtered = live.filter((c) => {
+    if (zone !== "all" && zoneFor(c, mult) !== zone) return false;
+    if (!q.trim()) return true;
+    return (c.name + " " + c.set).toLowerCase().includes(q.toLowerCase());
+  });
+  const bin = db.dollarBin || BLANK.dollarBin;
+
+  return (
+    <div>
+      <div className="flex gap-3 mb-3">
+        <Mini label="At cost" value={money0(m.invCost)} color={C.text} />
+        <Mini label="At market" value={money0(m.invMarket)} color={C.purple} />
+        <Mini label="Upside" value={(m.unrealized >= 0 ? "+" : "") + money0(m.unrealized)} color={m.unrealized >= 0 ? C.teal : C.loss} />
+      </div>
+      <div className="text-xs mb-3 px-1" style={{ color: C.muted }}>{m.titleCount} titles · {m.unitCount} cards · {bin.qty} in dollar binder</div>
+      <div className="relative mb-3">
+        <Search size={17} color={C.muted} className="absolute left-3.5 top-4" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your stock"
+          className="w-full rounded-xl py-3.5 pl-11 pr-4 text-base outline-none" style={{ background: C.surface, border: `1px solid ${C.line}`, color: C.text }} />
+      </div>
+      <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
+        {[["all", "All"], ...Object.entries(ZONES).map(([k, v]) => [k, v.short])].map(([k, l]) => (
+          <button key={k} onClick={() => setZone(k)} className="px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap"
+            style={{ background: zone === k ? C.teal : C.surface2, color: zone === k ? C.ink : C.muted }}>{l}</button>
+        ))}
+      </div>
+      <button onClick={onAdd} className="w-full flex items-center justify-center gap-2 rounded-xl py-4 mb-4 font-semibold active:opacity-80" style={{ background: C.purple, color: "#fff" }}>
+        <Plus size={18} /> Add inventory
+      </button>
+      {filtered.length === 0 ? <Empty text="Nothing here." /> : (
+        <div className="space-y-2">
+          {filtered.map((c) => {
+            const avg = avgCost(c), v = valueOf(c, mult), want = stickerFor(c, mult);
+            const off = carriesSticker(c, mult) && c.sticker != null && c.sticker !== want;
+            return (
+              <div key={c.id} className="rounded-xl p-3.5" style={{ background: C.surface, border: `1px solid ${off ? "rgba(240,184,73,0.4)" : C.line}` }}>
+                <button onClick={() => onOpen(c)} className="w-full text-left flex items-center gap-3">
+                  <div className="w-1 h-9 rounded-full shrink-0" style={{ background: c.border === "yellow" ? C.gold : C.purple }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm truncate">{c.name}</div>
+                    <div className="text-xs mt-0.5 truncate" style={{ color: C.muted }}>
+                      {c.set || "—"}{c.number ? ` #${c.number}` : ""} · {c.condition} · {ZONES[zoneFor(c, mult)].short}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-mono text-sm" style={{ color: C.purple }}>{money(v)}</div>
+                    <div className="text-xs" style={{ color: off ? C.gold : C.muted }}>
+                      {carriesSticker(c, mult) ? `tag $${c.sticker ?? want}` : "no tag"}
+                    </div>
+                  </div>
+                </button>
+                <div className="flex items-center gap-3 mt-2.5 pt-2.5 text-xs" style={{ borderTop: `1px solid ${C.line}` }}>
+                  <span className="flex items-center gap-1" style={{ color: C.muted }}><Layers size={12} /> {c.qty}</span>
+                  <span style={{ color: C.muted }}>avg <span className="font-mono" style={{ color: C.text }}>{money(avg)}</span></span>
+                  <button onClick={() => onSell(c)} className="ml-auto px-3 py-1.5 rounded-lg font-semibold" style={{ background: C.teal, color: C.ink }}>Sell</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+function Mini({ label, value, color }) {
+  return (
+    <div className="flex-1 rounded-xl p-3" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+      <div className="text-xs mb-1" style={{ color: C.muted }}>{label}</div>
+      <div className="font-mono font-bold text-base" style={{ color }}>{value}</div>
+    </div>
+  );
+}
+
+/* ============================= CASH ============================= */
+function CashTab({ db, m, onEntry, setDb }) {
+  const [start, setStart] = useState(String(db.startingCash || ""));
+  const bin = db.dollarBin || BLANK.dollarBin;
+  const [binAdd, setBinAdd] = useState({ qty: "", cost: "" });
+  return (
+    <div>
+      <div className="rounded-xl p-4 mb-3" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+        <div className="text-xs uppercase tracking-wider mb-1" style={{ color: C.muted }}>Funds on hand</div>
+        <div className="font-mono font-bold text-3xl mb-3" style={{ color: C.teal }}>{money(m.funds)}</div>
+        <div className="space-y-1.5">
+          {METHODS.filter((k) => Math.abs(m.byMethod[k]) > 0.004).map((k) => (
+            <div key={k} className="flex justify-between text-sm">
+              <span style={{ color: C.muted }}>{k === "Cash" ? "Drawer" : k}</span>
+              <span className="font-mono">{money(m.byMethod[k])}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-xl p-4 mb-3" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+        <label className="text-xs" style={{ color: C.muted }}>Starting bank</label>
+        <div className="flex gap-2 mt-2">
+          <input value={start} onChange={(e) => setStart(e.target.value)} inputMode="decimal" placeholder="0.00"
+            className="flex-1 rounded-lg py-3 px-3 font-mono outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
+          <button onClick={() => setDb((d) => ({ ...d, startingCash: num(start) }))} className="px-4 rounded-lg font-semibold text-sm" style={{ background: C.teal, color: C.ink }}>Save</button>
+        </div>
+      </div>
+      <div className="rounded-xl p-4 mb-4" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+        <div className="flex justify-between items-baseline mb-2">
+          <span className="text-sm font-semibold">Dollar binder</span>
+          <span className="font-mono text-sm">{bin.qty} cards · {money(bin.costPool)}</span>
+        </div>
+        <div className="text-xs mb-3" style={{ color: C.muted }}>Add bulk after a collection buy.</div>
+        <div className="flex gap-2">
+          <input value={binAdd.qty} onChange={(e) => setBinAdd({ ...binAdd, qty: e.target.value })} inputMode="numeric" placeholder="qty"
+            className="w-20 rounded-lg py-3 px-3 font-mono text-sm outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
+          <input value={binAdd.cost} onChange={(e) => setBinAdd({ ...binAdd, cost: e.target.value })} inputMode="decimal" placeholder="total cost"
+            className="flex-1 rounded-lg py-3 px-3 font-mono text-sm outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
+          <button onClick={() => {
+            const q = Math.round(num(binAdd.qty)), cost = num(binAdd.cost);
+            if (q <= 0) return;
+            setDb((d) => ({
+              ...d, dollarBin: { ...bin, qty: bin.qty + q, costPool: bin.costPool + cost },
+              ledger: cost > 0 ? [{ id: uid(), date: Date.now(), amount: -cost, method: "Cash", type: "buy", note: `${q} bulk cards`, showId: d.activeShowId }, ...d.ledger] : d.ledger,
+            }));
+            setBinAdd({ qty: "", cost: "" });
+          }} className="px-4 rounded-lg font-semibold text-sm" style={{ background: C.purple, color: "#fff" }}>Add</button>
+        </div>
+      </div>
+      <button onClick={onEntry} className="w-full flex items-center justify-center gap-2 rounded-xl py-4 mb-4 font-semibold active:opacity-80" style={{ background: C.surface2, color: C.text, border: `1px solid ${C.line}` }}>
+        <Plus size={18} /> Log expense or deposit
+      </button>
+      {db.ledger.length === 0 ? <Empty text="No cash movement recorded." /> : (
+        <div className="space-y-1.5">
+          {db.ledger.slice(0, 80).map((l) => (
+            <div key={l.id} className="flex items-center gap-3 rounded-lg px-3 py-3" style={{ background: C.surface }}>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm truncate">{l.note}</div>
+                <div className="text-xs" style={{ color: C.muted }}>{new Date(l.date).toLocaleDateString()} · {l.type}{l.method ? ` · ${l.method}` : ""}</div>
+              </div>
+              <div className="font-mono text-sm font-semibold shrink-0" style={{ color: l.amount >= 0 ? C.teal : C.loss }}>{l.amount >= 0 ? "+" : ""}{money(l.amount)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================ STATS ============================= */
+function StatsTab({ db, m, onToggleShow, active, setDb }) {
+  const [name, setName] = useState(""); const [key, setKey] = useState(db.tcgKey || "");
+  const [mp, setMp] = useState(String(db.priceMultiplier ?? 1));
+  const margin = m.revenue > 0 ? (m.realized / m.revenue) * 100 : 0;
+  const perShow = db.shows.map((s) => {
+    const sales = db.sales.filter((x) => x.showId === s.id);
+    const prof = sum(sales, (x) => (x.price - x.unitCost) * x.qty);
+    const exp = sum(db.ledger.filter((l) => l.showId === s.id && l.type === "expense"), (l) => l.amount);
+    const gross = sum(db.ledger.filter((l) => l.showId === s.id && l.amount > 0), (l) => l.amount);
+    return { ...s, prof, net: prof + exp, count: sales.length, gross };
+  });
+  const best = [...db.sales].sort((a, b) => (b.price - b.unitCost) * b.qty - (a.price - a.unitCost) * a.qty).slice(0, 5);
+  const discounts = sum(db.deals, (d) => (d.discount < 0 ? -d.discount : 0));
+  return (
+    <div>
+      <div className="rounded-xl p-4 mb-4" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+        <div className="text-sm font-semibold mb-3">{active ? "Show in progress" : "Start a show"}</div>
+        {!active && <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Show name"
+          className="w-full rounded-lg py-3 px-3 mb-3 outline-none text-sm" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />}
+        <button onClick={() => { onToggleShow(name); setName(""); }} className="w-full flex items-center justify-center gap-2 rounded-lg py-3.5 font-semibold"
+          style={{ background: active ? C.loss : C.teal, color: active ? "#fff" : C.ink }}>
+          {active ? <><Square size={16} /> End {active.name}</> : <><Play size={16} /> Start show</>}
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <Mini label="Revenue" value={money0(m.revenue)} color={C.text} />
+        <Mini label="Cost of goods" value={money0(m.cogs)} color={C.muted} />
+        <Mini label="Realized profit" value={(m.realized >= 0 ? "+" : "") + money0(m.realized)} color={m.realized >= 0 ? C.teal : C.loss} />
+        <Mini label="Margin" value={margin.toFixed(1) + "%"} color={C.gold} />
+      </div>
+      {discounts > 0 && <div className="rounded-xl p-3.5 mb-4 flex justify-between items-center" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+        <div><div className="text-sm font-semibold">Given away in deals</div>
+          <div className="text-xs" style={{ color: C.muted }}>Every unbalanced transaction</div></div>
+        <div className="font-mono font-bold" style={{ color: C.gold }}>{money(discounts)}</div></div>}
+
+      <Section title="By show" />
+      {perShow.length === 0 ? <Empty text="No shows logged yet." /> : (
+        <div className="space-y-2 mb-6">
+          {perShow.map((s) => (
+            <div key={s.id} className="rounded-xl p-3.5" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+              <div className="flex justify-between items-baseline mb-2">
+                <div className="font-semibold text-sm">{s.name}</div>
+                <div className="font-mono font-bold" style={{ color: s.net >= 0 ? C.teal : C.loss }}>{s.net >= 0 ? "+" : ""}{money(s.net)}</div>
+              </div>
+              <div className="text-xs" style={{ color: C.muted }}>{s.count} sales · {money(s.gross)} collected</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <Section title="Best flips (on average cost)" />
+      {best.length === 0 ? <Empty text="No sales yet." /> : (
+        <div className="space-y-1.5 mb-6">
+          {best.map((s) => (
+            <div key={s.id} className="flex items-center gap-3 rounded-lg px-3 py-3" style={{ background: C.surface }}>
+              <div className="flex-1 min-w-0"><div className="text-sm truncate">{s.name}</div>
+                <div className="text-xs" style={{ color: C.muted }}>avg {money(s.unitCost)} → {money(s.price)}</div></div>
+              <div className="font-mono text-sm font-semibold" style={{ color: C.teal }}>+{money((s.price - s.unitCost) * s.qty)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <Section title="Pricing" />
+      <div className="rounded-xl p-4" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+        <div className="text-xs mb-3" style={{ color: C.muted }}>
+          Market data from pokemontcg.io. Multiplier scales every computed sticker: 0.9 to move product, 1.1 for convenience pricing.
+        </div>
+        <div className="flex gap-2 mb-3">
+          <input value={mp} onChange={(e) => setMp(e.target.value)} inputMode="decimal" placeholder="1.0"
+            className="w-24 rounded-lg py-3 px-3 font-mono text-sm outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
+          <button onClick={() => setDb((d) => ({ ...d, priceMultiplier: num(mp) || 1 }))} className="px-4 rounded-lg font-semibold text-sm" style={{ background: C.teal, color: C.ink }}>Save multiplier</button>
+        </div>
+        <div className="flex gap-2">
+          <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="pokemontcg.io API key (optional)"
+            className="flex-1 rounded-lg py-3 px-3 text-sm outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
+          <button onClick={() => setDb((d) => ({ ...d, tcgKey: key.trim() }))} className="px-4 rounded-lg font-semibold text-sm" style={{ background: C.teal, color: C.ink }}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const Section = ({ title }) => <div className="text-xs uppercase tracking-wider font-semibold mb-2 mt-1" style={{ color: C.muted }}>{title}</div>;
+const Empty = ({ text }) => <div className="rounded-xl py-10 px-4 text-center text-sm" style={{ background: C.surface, color: C.muted, border: `1px dashed ${C.line}` }}>{text}</div>;
+
+/* ============================= NAV ============================== */
+function Nav({ tab, setTab, alerts }) {
+  const items = [
+    { id: "attention", label: "Prep", Icon: ListChecks, badge: alerts },
+    { id: "deal", label: "Deal", Icon: Camera },
+    { id: "stock", label: "Stock", Icon: Package },
+    { id: "cash", label: "Cash", Icon: Wallet },
+    { id: "stats", label: "Stats", Icon: BarChart3 },
+  ];
+  return (
+    <div className="fixed bottom-0 left-0 right-0 flex" style={{ background: C.surface, borderTop: `1px solid ${C.line}`, zIndex: 50 }}>
+      {items.map(({ id, label, Icon, badge }) => (
+        <button key={id} onClick={() => setTab(id)} className="flex-1 flex flex-col items-center gap-1 py-3.5 relative" style={{ color: tab === id ? C.teal : C.muted }}>
+          <div className="relative">
+            <Icon size={19} />
+            {badge > 0 && <span className="absolute -top-1.5 -right-2 px-1.5 rounded-full text-xs font-bold" style={{ background: C.gold, color: C.ink, fontSize: 10 }}>{badge}</span>}
+          </div>
+          <span className="text-xs font-medium">{label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ============================ SHEETS ============================ */
+function Sheet({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 flex items-end" style={{ background: "rgba(4,8,20,0.72)", zIndex: 70 }} onClick={onClose}>
+      <div className="w-full rounded-t-2xl p-5 max-h-full overflow-y-auto" style={{ background: C.surface, borderTop: `1px solid ${C.line}` }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <div className="font-semibold pr-3">{title}</div>
+          <button onClick={onClose} className="p-1.5 rounded-lg shrink-0" style={{ background: C.surface2 }}><X size={18} color={C.muted} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+function Field({ label, ...p }) {
+  return (
+    <div className="mb-3">
+      <label className="text-xs block mb-1.5" style={{ color: C.muted }}>{label}</label>
+      <input {...p} className="w-full rounded-lg py-3.5 px-3 text-base outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
+    </div>
+  );
+}
+function Chips({ label, options, value, onChange, tint = C.teal }) {
+  return (
+    <div className="mb-3">
+      {label && <label className="text-xs block mb-1.5" style={{ color: C.muted }}>{label}</label>}
+      <div className="flex gap-1.5">
+        {options.map((k) => <button key={k} onClick={() => onChange(k)} className="flex-1 py-2.5 rounded-lg text-xs font-semibold"
+          style={{ background: value === k ? tint : C.surface2, color: value === k ? C.ink : C.muted }}>{k}</button>)}
+      </div>
+    </div>
+  );
+}
+function BigBtn({ children, onClick, bg = C.teal, fg = C.ink, disabled }) {
+  return <button onClick={onClick} disabled={disabled} className="w-full rounded-xl py-4 font-semibold flex items-center justify-center gap-2 active:opacity-80"
+    style={{ background: bg, color: fg, opacity: disabled ? 0.4 : 1 }}>{children}</button>;
+}
+
+function SellSheet({ card, onClose, onConfirm, mult }) {
+  const [qty, setQty] = useState(1);
+  const [price, setPrice] = useState(String(card.sticker || stickerFor(card, mult)));
+  const [method, setMethod] = useState("Cash");
+  const avg = avgCost(card), p = (num(price) - avg) * qty;
+  return (
+    <Sheet title={card.name} onClose={onClose}>
+      <div className="text-xs mb-4" style={{ color: C.muted }}>{card.set || "—"} · {card.printing} · {card.condition} · {card.qty} on hand</div>
+      <div className="rounded-xl p-3 mb-4 flex justify-between text-sm" style={{ background: C.surface2 }}>
+        <span style={{ color: C.muted }}>Average cost</span><span className="font-mono font-semibold">{money(avg)}</span>
+      </div>
+      <label className="text-xs block mb-1.5" style={{ color: C.muted }}>Quantity</label>
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-14 h-14 rounded-lg flex items-center justify-center" style={{ background: C.surface2 }}><Minus size={20} /></button>
+        <div className="flex-1 text-center font-mono font-bold text-2xl">{qty}</div>
+        <button onClick={() => setQty(Math.min(card.qty, qty + 1))} className="w-14 h-14 rounded-lg flex items-center justify-center" style={{ background: C.surface2 }}><Plus size={20} /></button>
+      </div>
+      <Field label="Sold for (each)" value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" />
+      <Chips label="Paid with" options={METHODS} value={method} onChange={setMethod} />
+      <div className="rounded-xl p-4 mb-4 flex justify-between items-center" style={{ background: C.surface2 }}>
+        <div className="text-xs" style={{ color: C.muted }}>Profit on this sale</div>
+        <div className="font-mono font-bold text-2xl" style={{ color: p >= 0 ? C.teal : C.loss }}>{p >= 0 ? "+" : ""}{money(p)}</div>
+      </div>
+      <BigBtn onClick={() => onConfirm(qty, num(price), method)} disabled={num(price) <= 0}><Check size={18} /> Log sale</BigBtn>
+    </Sheet>
+  );
+}
+
+function AddSheet({ onClose, onConfirm }) {
+  const [f, setF] = useState({ name: "", set: "", number: "", kind: "single", printing: "Normal", condition: "NM", graded: false, qty: "1", cost: "", market: "" });
+  const [pay, setPay] = useState(true);
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const spend = num(f.cost) * (num(f.qty) || 1);
+  return (
+    <Sheet title="Add inventory" onClose={onClose}>
+      <div className="flex gap-2 mb-3">
+        {["single", "sealed"].map((k) => <button key={k} onClick={() => setF({ ...f, kind: k })} className="flex-1 py-3 rounded-lg text-sm font-semibold capitalize"
+          style={{ background: f.kind === k ? C.purple : C.surface2, color: f.kind === k ? "#fff" : C.muted }}>{k}</button>)}
+      </div>
+      <Field label="Card or product" value={f.name} onChange={set("name")} placeholder="Articuno ex" />
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Set" value={f.set} onChange={set("set")} placeholder="151" />
+        <Field label="Number" value={f.number} onChange={set("number")} placeholder="202" />
+      </div>
+      {f.kind === "single" && <>
+        <Chips label="Printing" options={PRINTINGS} value={f.printing} onChange={(k) => setF({ ...f, printing: k })} tint={C.purple} />
+        <Chips label="Condition" options={CONDITIONS} value={f.condition} onChange={(k) => setF({ ...f, condition: k })} tint={C.purple} />
+        <button onClick={() => setF({ ...f, graded: !f.graded })} className="w-full flex items-center gap-3 rounded-lg p-3 mb-3" style={{ background: C.surface2 }}>
+          <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ background: f.graded ? C.gold : "transparent", border: `1px solid ${f.graded ? C.gold : C.line}` }}>
+            {f.graded && <Check size={15} color={C.ink} />}</div>
+          <span className="text-sm text-left">Graded slab (high end case, no sticker)</span>
+        </button>
+      </>}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Quantity" value={f.qty} onChange={set("qty")} inputMode="numeric" />
+        <Field label="Cost each" value={f.cost} onChange={set("cost")} inputMode="decimal" placeholder="0.00" />
+      </div>
+      <Field label="Market value (optional, looked up later)" value={f.market} onChange={set("market")} inputMode="decimal" placeholder="0.00" />
+      <button onClick={() => setPay(!pay)} className="w-full flex items-center gap-3 rounded-lg p-3 mb-4" style={{ background: C.surface2 }}>
+        <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ background: pay ? C.teal : "transparent", border: `1px solid ${pay ? C.teal : C.line}` }}>
+          {pay && <Check size={15} color={C.ink} />}</div>
+        <span className="text-sm text-left">Paid with business cash ({money(spend)} out)</span>
+      </button>
+      <BigBtn onClick={() => onConfirm(f, num(f.qty) || 1, num(f.cost), pay)} disabled={!f.name.trim()} bg={C.purple} fg="#fff"><Plus size={18} /> Add to book</BigBtn>
+    </Sheet>
+  );
+}
+
+function CardSheet({ card, all, onClose, onSave, onDelete, onMerge, onAddLot, tcgKey, mult }) {
+  const [busy, setBusy] = useState(false); const [note, setNote] = useState("");
+  const [mode, setMode] = useState("info");
+  const [lot, setLot] = useState({ qty: "1", cost: "" }); const [pay, setPay] = useState(true);
+  const [mk, setMk] = useState(String(card.market));
+  const avg = avgCost(card), v = valueOf({ ...card, market: num(mk) }, mult);
+  const want = stickerFor({ ...card, market: num(mk) }, mult);
+  const zone = zoneFor({ ...card, market: num(mk) }, mult);
+
+  const curve = useMemo(() => {
+    const asc = [...card.lots].sort((a, b) => a.date - b.date);
+    let q = 0, cost = 0;
+    return asc.map((l) => { q += l.qty; cost += l.qty * l.unitCost; return { ...l, avgAfter: cost / q, runQty: q }; }).reverse();
+  }, [card.lots]);
+  const twins = all.filter((c) => c.id !== card.id && slug(c.name) === slug(card.name));
+
+  const lookup = async () => {
+    setBusy(true); setNote("");
+    try {
+      const res = await tcgLookup(card.name, card.set, card.number, tcgKey);
+      if (res) { setMk(String(res.market)); setNote(`${res.set} · ${res.printing} · ${borderOf(res.series)} border`); onSave(card.id, { series: res.series, border: borderOf(res.series) }); }
+      else setNote("No match. Enter it manually.");
+    } catch { setNote("Lookup failed."); }
+    setBusy(false);
+  };
+
+  return (
+    <Sheet title={card.name} onClose={onClose}>
+      <div className="text-xs mb-4" style={{ color: C.muted }}>
+        {card.set || "—"}{card.number ? ` #${card.number}` : ""} · {card.printing} · {card.condition} · {card.border} border{card.graded ? " · graded" : ""}
+      </div>
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <Box label="On hand" value={card.qty} />
+        <Box label="Avg cost" value={money(avg)} />
+        <Box label="Invested" value={money(card.costPool)} tint={C.purple} />
+      </div>
+      <div className="rounded-xl p-3.5 mb-4" style={{ background: C.surface2 }}>
+        <div className="flex justify-between text-sm mb-2">
+          <span style={{ color: C.muted }}>Belongs in</span><span className="font-semibold">{ZONES[zone].label}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span style={{ color: C.muted }}>Sticker should read</span>
+          <span className="font-mono font-bold" style={{ color: C.gold }}>
+            {carriesSticker({ ...card, market: num(mk) }, mult) ? `$${want}` : "no price"}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex gap-2 mb-4">
+        {[["info", "Details"], ["lot", "Add lot"], ["merge", "Pool"]].map(([k, l]) => (
+          <button key={k} onClick={() => setMode(k)} className="flex-1 py-2.5 rounded-lg text-xs font-semibold"
+            style={{ background: mode === k ? C.surface2 : "transparent", color: mode === k ? C.text : C.muted, border: `1px solid ${C.line}` }}>{l}</button>
+        ))}
+      </div>
+
+      {mode === "info" && <>
+        <Field label="Market value (NM base)" value={mk} onChange={(e) => setMk(e.target.value)} inputMode="decimal" />
+        <div className="text-xs mb-3 px-1" style={{ color: C.muted }}>
+          {card.condition} sells at {Math.round((COND_MULT[card.condition] ?? 1) * 100)}% of NM, so this copy is worth {money(v)}.
+        </div>
+        <button onClick={lookup} disabled={busy} className="w-full rounded-lg py-3 mb-1 text-sm font-semibold flex items-center justify-center gap-2" style={{ background: C.surface2, color: C.gold }}>
+          {busy ? <Loader2 size={16} className="animate-spin" /> : <TrendingUp size={16} />}{busy ? "Checking market" : "Look up market value"}
+        </button>
+        {note && <div className="text-xs mb-3 text-center" style={{ color: C.muted }}>{note}</div>}
+        <Chips label="Condition" options={CONDITIONS} value={card.condition} onChange={(k) => onSave(card.id, { condition: k })} tint={C.purple} />
+
+        <Section title={`Acquisitions (${card.lots.length})`} />
+        <div className="space-y-1.5 mb-4">
+          {curve.map((l) => (
+            <div key={l.id} className="flex items-center gap-3 rounded-lg px-3 py-2.5" style={{ background: C.surface2 }}>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm">{l.qty}x at {money(l.unitCost)}</div>
+                <div className="text-xs" style={{ color: C.muted }}>{new Date(l.date).toLocaleDateString()} · {l.source}</div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="font-mono text-xs" style={{ color: C.teal }}>avg {money(l.avgAfter)}</div>
+                <div className="text-xs" style={{ color: C.muted }}>after {l.runQty}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mb-3">
+          <BigBtn onClick={() => { onSave(card.id, { market: num(mk), priced: true, pricedAt: Date.now(), sticker: want, zone }); onClose(); }}>
+            <Check size={18} /> Save and mark tagged
+          </BigBtn>
+        </div>
+        <button onClick={() => onDelete(card.id)} className="w-full py-3 text-sm flex items-center justify-center gap-2" style={{ color: C.loss }}>
+          <Trash2 size={15} /> Remove from book</button>
+      </>}
+
+      {mode === "lot" && <>
+        <div className="text-xs mb-3" style={{ color: C.muted }}>Bought more copies. This pools into the average.</div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Quantity" value={lot.qty} onChange={(e) => setLot({ ...lot, qty: e.target.value })} inputMode="numeric" />
+          <Field label="Cost each" value={lot.cost} onChange={(e) => setLot({ ...lot, cost: e.target.value })} inputMode="decimal" placeholder="0.00" />
+        </div>
+        <div className="rounded-xl p-3.5 mb-4 flex justify-between text-sm" style={{ background: C.surface2 }}>
+          <span style={{ color: C.muted }}>New average would be</span>
+          <span className="font-mono font-semibold" style={{ color: C.teal }}>
+            {money((card.costPool + num(lot.cost) * (num(lot.qty) || 1)) / (card.qty + (num(lot.qty) || 1)))}
+          </span>
+        </div>
+        <button onClick={() => setPay(!pay)} className="w-full flex items-center gap-3 rounded-lg p-3 mb-4" style={{ background: C.surface2 }}>
+          <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ background: pay ? C.teal : "transparent", border: `1px solid ${pay ? C.teal : C.line}` }}>
+            {pay && <Check size={15} color={C.ink} />}</div>
+          <span className="text-sm text-left">Paid with business cash</span>
+        </button>
+        <BigBtn onClick={() => onAddLot(card.id, num(lot.qty) || 1, num(lot.cost), pay)} disabled={num(lot.cost) <= 0} bg={C.purple} fg="#fff"><Plus size={18} /> Add lot</BigBtn>
+      </>}
+
+      {mode === "merge" && <>
+        <div className="text-xs mb-3" style={{ color: C.muted }}>Pool this into another copy of the same card. Use when a photo split one card into two records.</div>
+        {twins.length === 0 ? <Empty text="No other records with this name." /> : (
+          <div className="space-y-2">
+            {twins.map((t) => (
+              <button key={t.id} onClick={() => onMerge(card.id, t.id)} className="w-full text-left rounded-xl p-3 flex items-center gap-3" style={{ background: C.surface2 }}>
+                <Merge size={16} color={C.muted} className="shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm truncate">{t.set || "—"} · {t.printing} · {t.condition}</div>
+                  <div className="text-xs" style={{ color: C.muted }}>{t.qty} on hand · avg {money(avgCost(t))}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </>}
+    </Sheet>
+  );
+}
+
+function Box({ label, value, tint = C.text }) {
+  return (
+    <div className="rounded-xl p-3" style={{ background: C.surface2 }}>
+      <div className="text-xs mb-1" style={{ color: C.muted }}>{label}</div>
+      <div className="font-mono font-bold text-base" style={{ color: tint }}>{value}</div>
+    </div>
+  );
+}
+
+function LedgerSheet({ onClose, onConfirm }) {
+  const [amt, setAmt] = useState(""); const [type, setType] = useState("expense"); const [note, setNote] = useState(""); const [method, setMethod] = useState("Cash");
+  const out = type === "expense";
+  return (
+    <Sheet title="Cash entry" onClose={onClose}>
+      <div className="flex gap-2 mb-4">
+        {[["expense", "Money out"], ["deposit", "Money in"]].map(([k, label]) => (
+          <button key={k} onClick={() => setType(k)} className="flex-1 py-3 rounded-lg text-sm font-semibold"
+            style={{ background: type === k ? (k === "expense" ? C.loss : C.teal) : C.surface2, color: type === k ? (k === "expense" ? "#fff" : C.ink) : C.muted }}>{label}</button>
+        ))}
+      </div>
+      <Field label="Amount" value={amt} onChange={(e) => setAmt(e.target.value)} inputMode="decimal" placeholder="0.00" />
+      <Field label="What for" value={note} onChange={(e) => setNote(e.target.value)} placeholder={out ? "Booth fee, gas, food" : "Owner deposit"} />
+      <Chips label="Account" options={METHODS} value={method} onChange={setMethod} />
+      <BigBtn onClick={() => onConfirm(out ? -num(amt) : num(amt), type, note || (out ? "Expense" : "Deposit"), method)} disabled={num(amt) <= 0} bg={out ? C.loss : C.teal} fg={out ? "#fff" : C.ink}>
+        <Check size={18} /> Record {money(num(amt))}
+      </BigBtn>
+    </Sheet>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<PinGate><BoothBook /></PinGate>);
+</script>
+</body>
+</html>
