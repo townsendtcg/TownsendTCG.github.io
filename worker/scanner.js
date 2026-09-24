@@ -71,6 +71,18 @@ export default {
     // Health check: open the Worker URL in a browser to confirm it's running and the key is set.
     if (req.method === "GET") {
       const u = new URL(req.url);
+      // TCGplayer price data from TCGCSV (free daily dump). Browsers can't call it directly,
+      // so the register asks through here. Only the Pokemon groups/products/prices files.
+      if (u.searchParams.has("csv")) {
+        if (!allowed) return json({ error: "forbidden" }, 403, cors);
+        const path = u.searchParams.get("csv") || "";
+        if (!/^tcgplayer\/3\/(groups|\d+\/(products|prices))$/.test(path)) return json({ error: "bad path" }, 400, cors);
+        const r = await fetch(`https://tcgcsv.com/${path}`, {
+          headers: { "User-Agent": "TownsendTCG-BoothBook/1.0 (townsendtcg.github.io)" },
+          cf: { cacheTtl: 21600, cacheEverything: true },
+        });
+        return new Response(r.body, { status: r.status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "public, max-age=21600" } });
+      }
       if (u.searchParams.has("models") && env.GEMINI_API_KEY) {
         const lr = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { headers: { "x-goog-api-key": env.GEMINI_API_KEY } });
         const ld = await lr.json().catch(() => ({}));
