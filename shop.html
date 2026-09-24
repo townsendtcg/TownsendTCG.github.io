@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shop — Townsend TCG</title>
+<meta name="description" content="Browse what's currently in the Townsend TCG collection and request to buy. Payment the same way as at a show: Venmo, Cash App, PayPal, Zelle or JIM.">
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --ink: #080F22; --surface: #111C3A; --surface2: #1A2850; --line: #26365F;
+    --text: #E9EFFC; --muted: #7C8CB4; --teal: #3AD9C4; --purple: #8E74F0; --gold: #F0B849;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ink); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding-bottom: 60px;
+  }
+  a { color: inherit; }
+  header {
+    padding: 28px 20px 20px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(170deg, var(--surface) 0%, var(--ink) 100%);
+  }
+  .eyebrow { font-size: 11px; letter-spacing: 0.16em; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+  h1 { font-size: 26px; margin: 8px 0 6px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0; }
+  .back { display: inline-block; margin-top: 14px; font-size: 13px; color: var(--teal); text-decoration: none; }
+  main { max-width: 760px; margin: 0 auto; padding: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .card .name { font-weight: 600; font-size: 14px; line-height: 1.3; }
+  .card .meta { font-size: 12px; color: var(--muted); }
+  .card .price { font-family: ui-monospace, monospace; font-weight: 700; color: var(--teal); font-size: 18px; margin-top: auto; }
+  .card button {
+    background: var(--teal); color: var(--ink); border: none; border-radius: 10px;
+    padding: 10px; font-weight: 600; font-size: 13px; cursor: pointer;
+  }
+  .card button:active { opacity: 0.8; }
+  .empty {
+    border: 1px dashed var(--line); border-radius: 14px; padding: 40px 20px;
+    text-align: center; color: var(--muted); font-size: 14px;
+  }
+  .note { font-size: 12px; color: var(--muted); margin: 18px 4px 0; line-height: 1.6; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(4,8,20,0.75); display: none;
+    align-items: flex-end; justify-content: center; z-index: 80;
+  }
+  .overlay.open { display: flex; }
+  .sheet {
+    width: 100%; max-width: 520px; background: var(--surface); border-top: 1px solid var(--line);
+    border-radius: 18px 18px 0 0; padding: 22px; max-height: 88vh; overflow-y: auto;
+  }
+  .sheet h2 { margin: 0 0 4px; font-size: 18px; }
+  .sheet .meta { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; margin-top: 14px; }
+  input, textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 10px; padding: 12px; font-size: 15px; font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  .actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn { flex: 1; border: none; border-radius: 12px; padding: 14px; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .btn-primary { background: var(--teal); color: var(--ink); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--line); }
+  .status { font-size: 13px; margin-top: 12px; text-align: center; }
+  .status.ok { color: var(--teal); }
+  .status.err { color: #F4726A; }
+  .pay-note { font-size: 12px; color: var(--muted); margin-top: 16px; line-height: 1.6; padding-top: 14px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Townsend TCG</div>
+  <h1>Shop the collection</h1>
+  <p class="sub">Singles, slabs and binder finds — pick something and request it, same as you would at the table.</p>
+  <a class="back" href="./">&larr; Back to the show page</a>
+</header>
+
+<main>
+  <div id="grid" class="grid"></div>
+  <div id="empty" class="empty" style="display:none">
+    Nothing listed right now — check back soon, or catch the next show for the full case.
+  </div>
+  <p class="note">
+    This list is refreshed by hand after shows, so it may lag what's actually in the case by a day or two.
+    Requesting a card doesn't charge you anything — it just lets Austin know you want it and how to reach you.
+    He'll confirm it's still available and send payment details (Venmo, Cash App, PayPal, Zelle or JIM), the same
+    as at a show, then ship once paid. Looking for something not listed here? The full running archive is on the
+    <a href="https://app.getcollectr.com/showcase/profile/1610621e-dfd1-42ae-b30f-a6e79202c156" target="_blank" rel="noopener" style="color:var(--teal)">Collectr showcase</a>.
+  </p>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <h2 id="sheet-name">Card name</h2>
+    <div class="meta" id="sheet-meta"></div>
+    <form id="buy-form">
+      <label>Your name</label>
+      <input name="name" required placeholder="Full name">
+      <label>Email or phone</label>
+      <input name="contact" required placeholder="So Austin can reach you">
+      <div class="row">
+        <div>
+          <label>Quantity</label>
+          <input name="qty" type="number" min="1" value="1" required>
+        </div>
+      </div>
+      <label>Shipping address</label>
+      <textarea name="address" required placeholder="Street, city, state, ZIP"></textarea>
+      <label>Anything else?</label>
+      <textarea name="note" placeholder="Optional — offer notes, questions"></textarea>
+      <input type="hidden" name="card" id="sheet-card-field">
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" id="cancel-btn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="submit-btn">Send request</button>
+      </div>
+      <div class="status" id="form-status"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Set this to your Formspree (or similar) form endpoint to receive requests by
+  // email — add a second notification address in that service's dashboard (e.g.
+  // your carrier's email-to-text gateway) to also get a text. See the README.
+  const FORM_ENDPOINT = "https://formspree.io/f/REPLACE_ME";
+
+  const grid = document.getElementById("grid");
+  const empty = document.getElementById("empty");
+  const overlay = document.getElementById("overlay");
+  const sheetName = document.getElementById("sheet-name");
+  const sheetMeta = document.getElementById("sheet-meta");
+  const sheetCardField = document.getElementById("sheet-card-field");
+  const form = document.getElementById("buy-form");
+  const status = document.getElementById("form-status");
+  const submitBtn = document.getElementById("submit-btn");
+
+  function openSheet(card) {
+    sheetName.textContent = card.name;
+    sheetMeta.textContent = [card.set, card.number ? `#${card.number}` : "", card.printing !== "Normal" ? card.printing : "", card.condition, `$${card.price}`].filter(Boolean).join(" · ");
+    sheetCardField.value = `${card.name} (${card.set || "set unknown"}${card.number ? " #" + card.number : ""}, ${card.condition}) — $${card.price}`;
+    status.textContent = "";
+    status.className = "status";
+    form.reset();
+    sheetCardField.value = `${card.name} (${card.set || "set unknown"}${card.number ? " #" + card.number : ""}, ${card.condition}) — $${card.price}`;
+    document.querySelector('input[name="qty"]').max = card.qty || 1;
+    overlay.classList.add("open");
+  }
+  document.getElementById("cancel-btn").addEventListener("click", () => overlay.classList.remove("open"));
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (FORM_ENDPOINT.includes("REPLACE_ME")) {
+      status.textContent = "The shop's request form isn't set up yet — reach out on Instagram @Townsend_TCG in the meantime.";
+      status.className = "status err";
+      return;
+    }
+    submitBtn.disabled = true; submitBtn.textContent = "Sending…";
+    try {
+      const res = await fetch(FORM_ENDPOINT, {
+        method: "POST",
+        headers: { "Accept": "application/json" },
+        body: new FormData(form),
+      });
+      if (res.ok) {
+        status.textContent = "Request sent — Austin will follow up with payment details.";
+        status.className = "status ok";
+        form.reset();
+        setTimeout(() => overlay.classList.remove("open"), 1600);
+      } else {
+        throw new Error("send failed");
+      }
+    } catch {
+      status.textContent = "Couldn't send that. Try again, or message @Townsend_TCG directly.";
+      status.className = "status err";
+    }
+    submitBtn.disabled = false; submitBtn.textContent = "Send request";
+  });
+
+  fetch("./catalog.json", { cache: "no-store" })
+    .then((r) => r.ok ? r.json() : [])
+    .then((cards) => {
+      if (!Array.isArray(cards) || cards.length === 0) { empty.style.display = "block"; return; }
+      grid.innerHTML = cards.map((c, i) => `
+        <div class="card">
+          <div class="name">${escapeHtml(c.name)}</div>
+          <div class="meta">${escapeHtml([c.set, c.number ? "#" + c.number : "", c.printing !== "Normal" ? c.printing : "", c.condition].filter(Boolean).join(" · "))}</div>
+          <div class="price">$${Number(c.price).toFixed(0)}</div>
+          <button data-i="${i}">Request to buy</button>
+        </div>
+      `).join("");
+      grid.querySelectorAll("button[data-i]").forEach((btn) => {
+        btn.addEventListener("click", () => openSheet(cards[Number(btn.dataset.i)]));
+      });
+    })
+    .catch(() => { empty.style.display = "block"; empty.textContent = "Couldn't load the catalog right now — try again in a bit."; });
+
+  function escapeHtml(s) {
+    return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+</script>
+</body>
+</html>
