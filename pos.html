@@ -809,7 +809,7 @@ function AttentionTab({ db, setDb, a, mult, onConfirmSticker, onConfirmZone, onC
         <div className="text-xs mb-2" style={{ color: C.muted }}>Reprice day</div>
         <div className="flex gap-1">
           {DAYNAMES.map((d, i) => (
-            <button key={d} onClick={() => setDb((x) => ({ ...x, checkDay: i }))} className="flex-1 py-3 rounded text-xs font-semibold"
+            <button key={d} onClick={() => setDb((x) => ({ ...x, checkDay: i }))} className="flex-1 h-11 rounded text-xs font-semibold"
               style={{ background: checkDay === i ? C.teal : C.surface2, color: checkDay === i ? C.ink : C.muted }}>{d.slice(0, 1)}</button>
           ))}
         </div>
@@ -1022,7 +1022,7 @@ function DealTab({ db, onCommit, mult }) {
         <div className="flex gap-2 items-center rounded-xl p-2.5" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
           <span className="text-sm flex-1 pl-1">Dollar binder</span>
           <input value={draft.binQty} onChange={(e) => setDraft((d) => ({ ...d, binQty: e.target.value }))} inputMode="numeric" placeholder="qty"
-            className="w-20 rounded-lg py-2.5 px-2 text-center font-mono text-sm outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
+            className="w-20 rounded-lg py-3 px-2 text-center font-mono text-sm outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
           <span className="font-mono text-sm w-16 text-right" style={{ color: C.teal }}>{money(num(draft.binQty) || 0)}</span>
         </div>
       </Leg>
@@ -1162,7 +1162,7 @@ function StockTab({ db, m, mult, onAdd, onScan, onOpen, onSell, setDb, flash }) 
       </div>
       <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
         {[["all", "All"], ...Object.entries(ZONES).map(([k, v]) => [k, v.short])].map(([k, l]) => (
-          <button key={k} onClick={() => setZone(k)} className="px-3.5 py-3 rounded-lg text-xs font-semibold whitespace-nowrap"
+          <button key={k} onClick={() => setZone(k)} className="px-3.5 h-11 rounded-lg text-xs font-semibold whitespace-nowrap"
             style={{ background: zone === k ? C.teal : C.surface2, color: zone === k ? C.ink : C.muted }}>{l}</button>
         ))}
       </div>
@@ -1204,7 +1204,7 @@ function StockTab({ db, m, mult, onAdd, onScan, onOpen, onSell, setDb, flash }) 
                 <div className="flex items-center gap-3 mt-2.5 pt-2.5 text-xs" style={{ borderTop: `1px solid ${C.line}` }}>
                   <span className="flex items-center gap-1" style={{ color: C.muted }}><Layers size={12} /> {c.qty}</span>
                   <span style={{ color: C.muted }}>avg <span className="font-mono" style={{ color: C.text }}>{money(avg)}</span></span>
-                  <button onClick={() => onSell(c)} className="ml-auto px-5 py-2.5 rounded-lg font-semibold text-sm" style={{ background: C.teal, color: C.ink }}>Sell</button>
+                  <button onClick={() => onSell(c)} className="ml-auto px-5 h-11 rounded-lg font-semibold text-sm" style={{ background: C.teal, color: C.ink }}>Sell</button>
                 </div>
               </div>
             );
