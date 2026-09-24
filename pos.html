@@ -258,16 +258,118 @@ function serieOf(setId) {
   if (!(setId in serieCache)) serieCache[setId] = getJson(`${TCGDEX}/sets/${encodeURIComponent(setId)}`).then((s) => s?.serie?.name || "").catch(() => "");
   return serieCache[setId];
 }
+/* TCGplayer prices for cards TCGdex has no TCGplayer price for (Galarian Gallery,
+   Trainer Gallery, some promos). Comes from TCGCSV's daily TCGplayer dump, fetched
+   through the tcg-scanner Worker because TCGCSV doesn't allow direct browser calls. */
+const csvCache = {};
+function csvGet(path) {
+  if (!csvCache[path]) {
+    csvCache[path] = fetch(`${SCAN_URL}/?csv=${encodeURIComponent(path)}`)
+      .then((r) => (r.ok ? r.json() : { results: [] }))
+      .then((j) => j.results || [])
+      .catch(() => { delete csvCache[path]; return []; });
+  }
+  return csvCache[path];
+}
+const cleanSetName = (s) => slug(String(s || "").replace(/^[A-Za-z]{1,5}\d{0,3}[a-z]?\s*:\s*/, ""));
+const CSV_SUB = { Holo: ["Holofoil", "Unlimited Holofoil"], Normal: ["Normal", "Unlimited Normal"], Reverse: ["Reverse Holofoil"], "1st Ed": ["1st Edition Holofoil", "1st Edition Normal"] };
+const CSV_LABEL = { Holofoil: "Holo", Normal: "Normal", "Reverse Holofoil": "Reverse", "1st Edition Holofoil": "1st Ed", "1st Edition Normal": "1st Ed", "Unlimited Holofoil": "Holo", "Unlimited Normal": "Normal" };
+async function tcgcsvPrice(card, printing) {
+  const want = cleanSetName(card.set?.name);
+  if (!want) return null;
+  const groups = await csvGet("tcgplayer/3/groups");
+  const g = groups.find((x) => cleanSetName(x.name) === want) || (want.length >= 6 ? groups.find((x) => cleanSetName(x.name).endsWith(want)) : null);
+  if (!g) return null;
+  const [products, prices] = await Promise.all([csvGet(`tcgplayer/3/${g.groupId}/products`), csvGet(`tcgplayer/3/${g.groupId}/prices`)]);
+  const n = normNum(card.localId), nm = slug(card.name);
+  const byNum = products.filter((p) => { const v = (p.extendedData || []).find((e) => e.name === "Number")?.value; return v && normNum(v) === n; });
+  const prod = byNum.find((p) => slug(p.name).startsWith(nm)) || byNum.find((p) => slug(p.name).includes(nm)) || (byNum.length === 1 ? byNum[0] : null);
+  if (!prod) return null;
+  const rows = prices.filter((x) => x.productId === prod.productId && (x.marketPrice || x.midPrice));
+  const pick = rows.find((x) => (CSV_SUB[printing] || []).includes(x.subTypeName)) || rows[0];
+  return pick ? { value: pick.marketPrice || pick.midPrice, printing: CSV_LABEL[pick.subTypeName] || "Normal", image: prod.imageUrl || null } : null;
+}
+
 async function shapeHit(card, printing) {
-  const p = pickPrice(card, printing); if (!p) return null;
-  return { market: p.value, printing: PRICE_MAP[p.printing] || "Normal", set: card.set?.name, series: await serieOf(card.set?.id), number: card.localId, tcgId: card.id, image: card.image ? card.image + "/low.webp" : null };
+  const p = pickPrice(card, printing);
+  let value = p ? p.value : null, label = p ? (PRICE_MAP[p.printing] || "Normal") : null, altImage = null;
+  if (value == null) {
+    const alt = await tcgcsvPrice(card, printing).catch(() => null);
+    if (alt) { value = alt.value; label = alt.printing; altImage = alt.image; }
+  }
+  if (value == null) return null;
+  return { market: value, printing: label, set: card.set?.name, series: await serieOf(card.set?.id), number: card.localId, tcgId: card.id, image: card.image ? card.image + "/low.webp" : altImage };
+}
+
+/* Search by name and/or number: "mewtwo vstar gg44", "GG44/GG70", "199/165", "charizard 4/102". */
+let setIndexP = null;
+function setIndex() {
+  if (!setIndexP) {
+    setIndexP = getJson(`${TCGDEX}/sets`).then((list) => {
+      const m = {};
+      (list || []).forEach((s) => { m[s.id] = { name: s.name, official: s.cardCount?.official, total: s.cardCount?.total }; });
+      return m;
+    }).catch(() => { setIndexP = null; return {}; });
+  }
+  return setIndexP;
+}
+const setIdOf = (id) => String(id || "").slice(0, String(id || "").lastIndexOf("-"));
+const NUM_RE = /^#?([a-z]{0,4}\d{1,4}[a-z]?)(?:\/([a-z]{0,4}\d{1,4}))?$/i;
+function parseQuery(q) {
+  const toks = String(q || "").trim().split(/\s+/).filter(Boolean);
+  let number = "", total = "";
+  for (let i = toks.length - 1; i >= 0; i--) {
+    const m = toks[i].match(NUM_RE);
+    if (m) { number = m[1]; total = m[2] || ""; toks.splice(i, 1); break; }
+  }
+  return { name: toks.join(" "), number, total };
+}
+async function tcgSearch(q) {
+  const { name, number, total } = parseQuery(q);
+  if (!name && !number) return [];
+  const sets = await setIndex();
+  const n = normNum(number);
+  const denom = total ? parseInt(String(total).replace(/\D/g, ""), 10) : null;
+  let list = [];
+  if (name) {
+    list = await getJson(`${TCGDEX}/cards?name=${encodeURIComponent(name)}`).catch(() => []);
+  } else {
+    const plain = /^\d+$/.test(number) ? String(parseInt(number, 10)) : null;
+    const variants = [...new Set([number, number.toUpperCase(), plain, plain && plain.padStart(3, "0")].filter(Boolean))];
+    const res = await Promise.all(variants.map((v) => getJson(`${TCGDEX}/cards?localId=${encodeURIComponent(v)}`).catch(() => [])));
+    const seen = new Set();
+    list = res.flat().filter((c) => c && !seen.has(c.id) && seen.add(c.id) && normNum(c.localId) === n);
+  }
+  list = (Array.isArray(list) ? list : []).filter((c) => !isPocket(c));
+  if (name && n) { const byNum = list.filter((c) => normNum(c.localId) === n); if (byNum.length) list = byNum; }
+  if (denom) {
+    const byOfficial = list.filter((c) => sets[setIdOf(c.id)]?.official === denom);
+    const byTotal = list.filter((c) => sets[setIdOf(c.id)]?.total === denom);
+    list = byOfficial.length ? byOfficial : byTotal.length ? byTotal : list;
+  }
+  if (name) {
+    const lc = name.toLowerCase();
+    list = [...list.filter((c) => (c.name || "").toLowerCase() === lc), ...list.filter((c) => (c.name || "").toLowerCase() !== lc)];
+  }
+  return list.slice(0, 30).map((c) => {
+    const s = sets[setIdOf(c.id)];
+    return { id: c.id, name: c.name, number: c.localId, set: s?.name || setIdOf(c.id), setTotal: s?.official, image: c.image ? c.image + "/low.webp" : null };
+  });
 }
 async function tcgLookup(name, setName, number, opts) {
   const { tcgId, printing } = opts && typeof opts === "object" ? opts : {};
   if (tcgId) {
     try { const hit = await shapeHit(await getJson(`${TCGDEX}/cards/${encodeURIComponent(tcgId)}`), printing); if (hit) return hit; } catch {}
   }
-  const q = (name || "").trim(); if (!q) return null;
+  const q = (name || "").trim();
+  if (!q) {
+    if (!number) return null;
+    const hits = (await tcgSearch(String(number))).slice(0, 6);
+    for (const h of hits) {
+      try { const res = await shapeHit(await getJson(`${TCGDEX}/cards/${encodeURIComponent(h.id)}`), printing); if (res) return res; } catch {}
+    }
+    return null;
+  }
   let list = await getJson(`${TCGDEX}/cards?name=${encodeURIComponent(q)}`);
   list = (Array.isArray(list) ? list : []).filter((c) => !isPocket(c));
   if (!list.length) return null;
@@ -277,7 +379,7 @@ async function tcgLookup(name, setName, number, opts) {
   let numMiss = false;
   if (n) { const byNum = list.filter((c) => normNum(c.localId) === n); if (byNum.length) list = byNum; else numMiss = true; }
   const full = (await Promise.all(list.slice(0, 12).map((c) => getJson(`${TCGDEX}/cards/${encodeURIComponent(c.id)}`).catch(() => null)))).filter(Boolean);
-  const denom = /\//.test(String(number || "")) ? parseInt(String(number).split("/")[1], 10) : null;
+  const denom = /\//.test(String(number || "")) ? parseInt(String(number).split("/")[1].replace(/\D/g, ""), 10) : null;
   const s = (setName || "").trim().toLowerCase();
   const setScore = (c) => {
     const sn = (c.set?.name || "").toLowerCase(); if (!s || !sn) return 0;
@@ -1462,10 +1564,65 @@ function SellSheet({ card, onClose, onConfirm, mult }) {
   );
 }
 
+function CardFinder({ initial = "", onPick, autoFocus }) {
+  const [q, setQ] = useState(initial);
+  const [res, setRes] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    if (!q.trim()) return;
+    setBusy(true);
+    try { setRes(await tcgSearch(q)); } catch { setRes([]); }
+    setBusy(false);
+  };
+  return (
+    <div className="mb-3">
+      <div className="flex gap-2">
+        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") run(); }} autoFocus={autoFocus}
+          placeholder="Name, number, or both (mewtwo gg44)" enterKeyHint="search"
+          className="flex-1 min-w-0 rounded-lg py-3 px-3 text-base outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
+        <button onClick={run} disabled={busy} aria-label="Search cards" className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0" style={{ background: C.teal }}>
+          {busy ? <Loader2 size={18} className="animate-spin" color={C.ink} /> : <Search size={18} color={C.ink} />}
+        </button>
+      </div>
+      {res && (res.length === 0
+        ? <div className="text-xs mt-2 px-1" style={{ color: C.gold }}>No matches. Try the number with its total, like 199/165 or GG44/GG70.</div>
+        : <>
+            <div className="text-xs mt-2 mb-1 px-1" style={{ color: C.muted }}>{res.length === 30 ? "First 30 matches. Add the number to narrow it down." : `${res.length} match${res.length === 1 ? "" : "es"}. Tap the right one.`}</div>
+            <div className="grid grid-cols-3 gap-2 max-h-96 overflow-y-auto">
+              {res.map((c) => (
+                <button key={c.id} onClick={() => { onPick(c); setRes(null); }} className="text-left rounded-lg p-1.5" style={{ background: C.surface2 }}>
+                  {c.image
+                    ? <img src={c.image} alt="" loading="lazy" className="w-full rounded" style={{ aspectRatio: "63/88", objectFit: "cover" }} />
+                    : <div className="w-full rounded flex items-center justify-center text-xs" style={{ aspectRatio: "63/88", background: C.surface, color: C.muted }}>No image</div>}
+                  <div className="text-xs font-semibold mt-1 truncate">{c.name}</div>
+                  <div className="text-xs truncate" style={{ color: C.muted }}>{c.set} {"·"} {c.number}{c.setTotal && /^\d/.test(c.number) ? `/${c.setTotal}` : ""}</div>
+                </button>
+              ))}
+            </div>
+          </>)}
+    </div>
+  );
+}
+
 function AddSheet({ onClose, onConfirm }) {
   const [f, setF] = useState({ name: "", set: "", number: "", kind: "single", printing: "Normal", condition: "NM", graded: false, qty: "1", cost: "", market: "" });
   const [pay, setPay] = useState(true);
-  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const [meta, setMeta] = useState({});
+  const [pricing, setPricing] = useState(false);
+  const pick = async (c) => {
+    setF((x) => ({ ...x, name: c.name, set: c.set, number: c.number, kind: "single" }));
+    setMeta({ tcgId: c.id, image: c.image });
+    setPricing(true);
+    try {
+      const res = await tcgLookup(c.name, c.set, c.number, { tcgId: c.id, printing: f.printing });
+      if (res) {
+        setF((x) => ({ ...x, market: String(res.market), printing: res.printing || x.printing }));
+        setMeta({ tcgId: res.tcgId, series: res.series, image: res.image || c.image });
+      }
+    } catch {}
+    setPricing(false);
+  };
+  const set = (k) => (e) => { setF({ ...f, [k]: e.target.value }); if (k === "name" || k === "number") setMeta({}); };
   const spend = num(f.cost) * (num(f.qty) || 1);
   return (
     <Sheet title="Add inventory" onClose={onClose}>
@@ -1473,6 +1630,17 @@ function AddSheet({ onClose, onConfirm }) {
         {["single", "sealed"].map((k) => <button key={k} onClick={() => setF({ ...f, kind: k })} className="flex-1 py-3 rounded-lg text-sm font-semibold capitalize"
           style={{ background: f.kind === k ? C.purple : C.surface2, color: f.kind === k ? "#fff" : C.muted }}>{k}</button>)}
       </div>
+      {f.kind === "single" && <CardFinder onPick={pick} autoFocus />}
+      {meta.tcgId && <div className="flex items-center gap-3 rounded-xl p-2.5 mb-3" style={{ background: C.surface2 }}>
+        {meta.image
+          ? <img src={meta.image} alt="" className="w-12 rounded" style={{ aspectRatio: "63/88", objectFit: "cover" }} />
+          : <div className="w-12 rounded shrink-0" style={{ aspectRatio: "63/88", background: C.surface }} />}
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold truncate">{f.name}</div>
+          <div className="text-xs truncate" style={{ color: C.muted }}>{f.set} {"·"} #{f.number}</div>
+        </div>
+        <div className="font-mono text-sm" style={{ color: C.purple }}>{pricing ? <Loader2 size={16} className="animate-spin" /> : f.market ? money(num(f.market)) : "no price"}</div>
+      </div>}
       <Field label="Card or product" value={f.name} onChange={set("name")} placeholder="Articuno ex" />
       <div className="grid grid-cols-2 gap-3">
         <Field label="Set" value={f.set} onChange={set("set")} placeholder="151" />
@@ -1497,7 +1665,7 @@ function AddSheet({ onClose, onConfirm }) {
           {pay && <Check size={15} color={C.ink} />}</div>
         <span className="text-sm text-left">Paid with business cash ({money(spend)} out)</span>
       </button>
-      <BigBtn onClick={() => onConfirm(f, num(f.qty) || 1, num(f.cost), pay)} disabled={!f.name.trim()} bg={C.purple} fg="#fff"><Plus size={18} /> Add to book</BigBtn>
+      <BigBtn onClick={() => onConfirm({ ...f, tcgId: meta.tcgId, series: meta.series, image: meta.image }, num(f.qty) || 1, num(f.cost), pay)} disabled={!f.name.trim() || pricing} bg={C.purple} fg="#fff"><Plus size={18} /> Add to book</BigBtn>
     </Sheet>
   );
 }
@@ -1682,7 +1850,7 @@ function ScanSheet({ mode: startMode, db, mult, onClose, onConfirm }) {
     if (row.kind === "sealed") { setRow(row.id, { state: "miss" }); return; }
     setRow(row.id, { state: "loading" });
     try {
-      const res = await tcgLookup(row.name, row.set, row.number, { printing: row.printing });
+      const res = await tcgLookup(row.name, row.set, row.number, { printing: row.printing, tcgId: row.tcgId });
       if (res) setRow(row.id, {
         state: "done", market: res.market, set: res.set || row.set, number: res.number || row.number,
         printing: row.userPrinting ? row.printing : (res.printing || row.printing),
@@ -1838,10 +2006,15 @@ function ScanRow({ r, mode, mult, have, unitCost, lot, onSet, onDrop, onReprice 
       </>}
       <button onClick={() => setEdit(!edit)} className="text-sm mt-1 py-2" style={{ color: C.muted }}>{edit ? "Close" : "Wrong card? Edit it"}</button>
       {edit && <div className="mt-2 space-y-2">
-        <input value={r.name} onChange={(e) => onSet({ name: e.target.value })} placeholder="Card name" className={`w-full ${inputCls}`} style={inputSty} />
+        <CardFinder initial={[r.name, r.number].filter(Boolean).join(" ")} onPick={(c) => {
+          const p = { name: c.name, set: c.set, number: c.number, tcgId: c.id, image: c.image, confidence: "high", userPrinting: false };
+          onSet(p); onReprice(p); setEdit(false);
+        }} />
+        <div className="text-xs px-1" style={{ color: C.muted }}>Or type it in yourself:</div>
+        <input value={r.name} onChange={(e) => onSet({ name: e.target.value, tcgId: null })} placeholder="Card name" className={`w-full ${inputCls}`} style={inputSty} />
         <div className="flex gap-2">
-          <input value={r.set} onChange={(e) => onSet({ set: e.target.value })} placeholder="Set" className={`flex-1 ${inputCls}`} style={inputSty} />
-          <input value={r.number} onChange={(e) => onSet({ number: e.target.value })} placeholder="Number" className={`w-28 font-mono ${inputCls}`} style={inputSty} />
+          <input value={r.set} onChange={(e) => onSet({ set: e.target.value, tcgId: null })} placeholder="Set" className={`flex-1 ${inputCls}`} style={inputSty} />
+          <input value={r.number} onChange={(e) => onSet({ number: e.target.value, tcgId: null })} placeholder="Number" className={`w-28 font-mono ${inputCls}`} style={inputSty} />
         </div>
         <button onClick={() => { onReprice({}); setEdit(false); }} className="w-full rounded-lg py-2.5 text-xs font-semibold" style={{ background: C.surface2, color: C.gold }}>Look it up again</button>
       </div>}
