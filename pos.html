@@ -207,32 +207,60 @@ function resize(file, maxDim, quality) {
     r.readAsDataURL(file);
   });
 }
-const PRINT_MAP = { holofoil: "Holo", normal: "Normal", reverseHolofoil: "Reverse", "1stEditionHolofoil": "1st Ed", "1stEditionNormal": "1st Ed", unlimitedHolofoil: "Holo" };
-const PRINT_ORDER = ["holofoil", "normal", "reverseHolofoil", "1stEditionHolofoil", "unlimitedHolofoil", "1stEditionNormal"];
-function pickPrice(card) {
-  const p = card?.tcgplayer?.prices; if (!p) return null;
-  for (const k of PRINT_ORDER) if (p[k]?.market) return { value: p[k].market, printing: k };
-  for (const k of Object.keys(p)) if (p[k]?.market) return { value: p[k].market, printing: k };
-  for (const k of Object.keys(p)) if (p[k]?.mid) return { value: p[k].mid, printing: k };
+/* Pricing: TCGdex (free, no key). TCGplayer USD market prices, by printing. */
+const TCGDEX = "https://api.tcgdex.net/v2/en";
+const PRICE_ORDER = ["holofoil", "normal", "reverse-holofoil", "1st-edition-holofoil", "unlimited-holofoil", "1st-edition-normal", "unlimited-normal"];
+const PRICE_MAP = { holofoil: "Holo", normal: "Normal", "reverse-holofoil": "Reverse", "1st-edition-holofoil": "1st Ed", "1st-edition-normal": "1st Ed", "unlimited-holofoil": "Holo", "unlimited-normal": "Normal" };
+const WANT_KEYS = { Holo: ["holofoil", "unlimited-holofoil"], Normal: ["normal", "unlimited-normal"], Reverse: ["reverse-holofoil"], "1st Ed": ["1st-edition-holofoil", "1st-edition-normal"] };
+function pickPrice(card, printing) {
+  const p = card?.pricing?.tcgplayer; if (!p) return null;
+  const has = (k) => p[k] && typeof p[k] === "object" && (p[k].marketPrice || p[k].midPrice);
+  const val = (k) => p[k].marketPrice || p[k].midPrice;
+  for (const k of (WANT_KEYS[printing] || [])) if (has(k)) return { value: val(k), printing: k };
+  for (const k of PRICE_ORDER) if (has(k)) return { value: val(k), printing: k };
+  for (const k of Object.keys(p)) if (has(k)) return { value: val(k), printing: k };
   return null;
 }
-async function tcgLookup(name, setName, number, apiKey) {
-  const clean = (s) => (s || "").replace(/["\\]/g, "").trim();
-  let q = `name:"${clean(name)}"`;
-  if (number) q += ` number:"${clean(String(number)).split("/")[0]}"`;
-  const r = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=12`, { headers: apiKey ? { "X-Api-Key": apiKey } : {} });
-  if (!r.ok) throw new Error("lookup " + r.status);
-  let cards = (await r.json()).data || [];
-  if (!cards.length) return null;
-  if (setName) {
-    const s = setName.toLowerCase();
-    const hit = cards.filter((c) => (c.set?.name || "").toLowerCase().includes(s) || s.includes((c.set?.name || "").toLowerCase()));
-    if (hit.length) cards = hit;
+const normNum = (s) => { const t = String(s || "").split("/")[0].trim().toLowerCase(); return /^\d+$/.test(t) ? String(parseInt(t, 10)) : t; };
+const isPocket = (c) => /\/tcgp\//.test(c.image || "") || /^(A\d|B\d|P-A)/.test(c.id || "");
+const getJson = async (url) => { const r = await fetch(url); if (!r.ok) throw new Error("lookup " + r.status); return r.json(); };
+const serieCache = {};
+function serieOf(setId) {
+  if (!setId) return Promise.resolve("");
+  if (!(setId in serieCache)) serieCache[setId] = getJson(`${TCGDEX}/sets/${encodeURIComponent(setId)}`).then((s) => s?.serie?.name || "").catch(() => "");
+  return serieCache[setId];
+}
+async function shapeHit(card, printing) {
+  const p = pickPrice(card, printing); if (!p) return null;
+  return { market: p.value, printing: PRICE_MAP[p.printing] || "Normal", set: card.set?.name, series: await serieOf(card.set?.id), number: card.localId, tcgId: card.id, image: card.image ? card.image + "/low.webp" : null };
+}
+async function tcgLookup(name, setName, number, opts) {
+  const { tcgId, printing } = opts && typeof opts === "object" ? opts : {};
+  if (tcgId) {
+    try { const hit = await shapeHit(await getJson(`${TCGDEX}/cards/${encodeURIComponent(tcgId)}`), printing); if (hit) return hit; } catch {}
   }
-  for (const c of cards) {
-    const p = pickPrice(c);
-    if (p) return { market: p.value, printing: PRINT_MAP[p.printing] || "Normal", set: c.set?.name, series: c.set?.series, number: c.number, tcgId: c.id };
-  }
+  const q = (name || "").trim(); if (!q) return null;
+  let list = await getJson(`${TCGDEX}/cards?name=${encodeURIComponent(q)}`);
+  list = (Array.isArray(list) ? list : []).filter((c) => !isPocket(c));
+  if (!list.length) return null;
+  const exact = list.filter((c) => (c.name || "").toLowerCase() === q.toLowerCase());
+  if (exact.length) list = exact;
+  const n = normNum(number);
+  let numMiss = false;
+  if (n) { const byNum = list.filter((c) => normNum(c.localId) === n); if (byNum.length) list = byNum; else numMiss = true; }
+  const full = (await Promise.all(list.slice(0, 12).map((c) => getJson(`${TCGDEX}/cards/${encodeURIComponent(c.id)}`).catch(() => null)))).filter(Boolean);
+  const denom = /\//.test(String(number || "")) ? parseInt(String(number).split("/")[1], 10) : null;
+  const s = (setName || "").trim().toLowerCase();
+  const setScore = (c) => {
+    const sn = (c.set?.name || "").toLowerCase(); if (!s || !sn) return 0;
+    if (sn === s) return 3;
+    if (sn === s + " set" || sn.replace(/ set$/, "") === s) return 2;
+    return sn.includes(s) || s.includes(sn) ? 1 : 0;
+  };
+  const score = (c) => setScore(c) * 2 + (denom && c.set?.cardCount?.official === denom ? 5 : 0);
+  const ranked = full.map((c, i) => ({ c, i, sc: score(c) })).sort((a, b) => b.sc - a.sc || a.i - b.i);
+  if (numMiss && !ranked.some((x) => setScore(x.c) > 0)) return null;
+  for (const { c } of ranked) { const res = await shapeHit(c, printing); if (res) return res; }
   return null;
 }
 
@@ -581,12 +609,12 @@ function AttentionTab({ db, setDb, a, mult, onConfirmSticker, onConfirmZone, onC
     for (let n = 0; n < live.length; n++) {
       const c = live[n];
       try {
-        const res = await tcgLookup(c.name, c.set, c.number, db.tcgKey);
+        const res = await tcgLookup(c.name, c.set, c.number, { tcgId: c.tcgId, printing: c.printing });
         if (res) {
           hits++;
           setDb((d) => ({
             ...d, cards: d.cards.map((x) => x.id === c.id ? {
-              ...x, market: res.market, priced: true, pricedAt: Date.now(),
+              ...x, market: res.market, priced: true, pricedAt: Date.now(), tcgId: res.tcgId || x.tcgId,
               series: x.series || res.series, border: x.border || borderOf(res.series),
               history: [...(x.history || []), { d: Date.now(), v: res.market }].slice(-40),
             } : x),
@@ -791,7 +819,7 @@ function DealTab({ db, onCommit, mult }) {
       if (r.kind === "sealed") continue;
       setRow(bucket, r.id, { priceState: "loading" });
       try {
-        const res = await tcgLookup(r.name, r.set, r.number, db.tcgKey);
+        const res = await tcgLookup(r.name, r.set, r.number, { printing: r.printing });
         setRow(bucket, r.id, res ? {
           priceState: "done", market: res.market, set: res.set || r.set, number: res.number || r.number,
           printing: res.printing || r.printing, tcgId: res.tcgId, series: res.series,
@@ -1228,17 +1256,12 @@ function StatsTab({ db, m, onToggleShow, active, setDb }) {
       <Section title="Pricing" />
       <div className="rounded-xl p-4" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
         <div className="text-xs mb-3" style={{ color: C.muted }}>
-          Market data from pokemontcg.io. Multiplier scales every computed sticker: 0.9 to move product, 1.1 for convenience pricing.
+          Market prices are TCGplayer market values via TCGdex. Multiplier scales every computed sticker: 0.9 to move product, 1.1 for convenience pricing.
         </div>
-        <div className="flex gap-2 mb-3">
+        <div className="flex gap-2">
           <input value={mp} onChange={(e) => setMp(e.target.value)} inputMode="decimal" placeholder="1.0"
             className="w-24 rounded-lg py-3 px-3 font-mono text-sm outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
           <button onClick={() => setDb((d) => ({ ...d, priceMultiplier: num(mp) || 1 }))} className="px-4 rounded-lg font-semibold text-sm" style={{ background: C.teal, color: C.ink }}>Save multiplier</button>
-        </div>
-        <div className="flex gap-2">
-          <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="pokemontcg.io API key (optional)"
-            className="flex-1 rounded-lg py-3 px-3 text-sm outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }} />
-          <button onClick={() => setDb((d) => ({ ...d, tcgKey: key.trim() }))} className="px-4 rounded-lg font-semibold text-sm" style={{ background: C.teal, color: C.ink }}>Save</button>
         </div>
       </div>
     </div>
@@ -1397,8 +1420,8 @@ function CardSheet({ card, all, onClose, onSave, onDelete, onMerge, onAddLot, tc
   const lookup = async () => {
     setBusy(true); setNote("");
     try {
-      const res = await tcgLookup(card.name, card.set, card.number, tcgKey);
-      if (res) { setMk(String(res.market)); setNote(`${res.set} · ${res.printing} · ${borderOf(res.series)} border`); onSave(card.id, { series: res.series, border: borderOf(res.series) }); }
+      const res = await tcgLookup(card.name, card.set, card.number, { tcgId: card.tcgId, printing: card.printing });
+      if (res) { setMk(String(res.market)); setNote(`${res.set} · ${res.printing} · ${borderOf(res.series)} border`); onSave(card.id, { series: res.series, border: borderOf(res.series), tcgId: res.tcgId }); }
       else setNote("No match. Enter it manually.");
     } catch { setNote("Lookup failed."); }
     setBusy(false);
