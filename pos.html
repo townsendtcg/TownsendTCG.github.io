@@ -7,6 +7,7 @@
 <title>Townsend TCG — Booth Book</title>
 <link rel="icon" href="data:,">
 <script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { theme: { extend: { fontSize: { xs: ["13px", "18px"], sm: ["15px", "21px"] } } } };</script>
 <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
 <script type="importmap">
 {
@@ -88,30 +89,51 @@ async function exportBook() {
 /* =========================== PIN GATE =========================== */
 const PIN_CODE = "0921"; // change me — see the comment at the top of this file
 function PinGate({ children }) {
-  const [ok, setOk] = useState(() => sessionStorage.getItem("boothbook_pin_ok") === "1");
+  const [ok, setOk] = useState(() => { try { return sessionStorage.getItem("boothbook_pin_ok") === "1"; } catch { return false; } });
   const [val, setVal] = useState("");
   const [err, setErr] = useState(false);
+  const tryPin = (v) => {
+    if (v === PIN_CODE) { try { sessionStorage.setItem("boothbook_pin_ok", "1"); } catch {} setOk(true); return; }
+    setErr(true); setTimeout(() => { setVal(""); setErr(false); }, 700);
+  };
+  const press = (k) => {
+    if (k === "del") { setErr(false); setVal((v) => v.slice(0, -1)); return; }
+    setVal((v) => {
+      if (v.length >= PIN_CODE.length) return v;
+      const n = v + k;
+      if (n.length === PIN_CODE.length) setTimeout(() => tryPin(n), 90);
+      return n;
+    });
+  };
+  useEffect(() => {
+    if (ok) return;
+    const onKey = (e) => { if (/^[0-9]$/.test(e.key)) press(e.key); else if (e.key === "Backspace") press("del"); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [ok]);
   if (ok) return children;
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
   return (
     <div className="min-h-screen flex items-center justify-center px-6" style={{ background: "#080F22", color: "#E9EFFC" }}>
       <div className="w-full max-w-xs">
-        <div className="flex items-center gap-2 mb-4 justify-center" style={{ color: "#7C8CB4" }}>
+        <div className="flex items-center gap-2 mb-6 justify-center" style={{ color: "#7C8CB4" }}>
           <Lock size={16} /><span className="text-xs tracking-widest font-semibold">BOOTH BOOK</span>
         </div>
-        <input
-          value={val} onChange={(e) => { setVal(e.target.value); setErr(false); }}
-          onKeyDown={(e) => { if (e.key === "Enter") {
-            if (val === PIN_CODE) { sessionStorage.setItem("boothbook_pin_ok", "1"); setOk(true); } else setErr(true);
-          }}}
-          type="password" inputMode="numeric" pattern="[0-9]*" autoComplete="off" placeholder="PIN" autoFocus
-          className="w-full rounded-xl py-4 px-4 text-center text-lg font-mono outline-none mb-3"
-          style={{ background: "#111C3A", border: `1px solid ${err ? "#F4726A" : "#26365F"}`, color: "#E9EFFC" }} />
-        <button
-          onClick={() => { if (val === PIN_CODE) { sessionStorage.setItem("boothbook_pin_ok", "1"); setOk(true); } else setErr(true); }}
-          className="w-full rounded-xl py-3.5 font-semibold" style={{ background: "#3AD9C4", color: "#080F22" }}>
-          Enter
-        </button>
-        {err && <div className="text-xs mt-3 text-center" style={{ color: "#F4726A" }}>Wrong PIN.</div>}
+        <div className="flex justify-center gap-4 mb-2" role="status" aria-label={`${val.length} of ${PIN_CODE.length} digits entered`}>
+          {Array.from({ length: PIN_CODE.length }).map((_, i) => (
+            <span key={i} className="w-4 h-4 rounded-full" style={{ background: i < val.length ? (err ? "#F4726A" : "#3AD9C4") : "transparent", border: `2px solid ${err ? "#F4726A" : i < val.length ? "#3AD9C4" : "#26365F"}` }} />
+          ))}
+        </div>
+        <div className="h-7 text-sm text-center mb-3" style={{ color: "#F4726A" }}>{err ? "Wrong PIN, try again" : ""}</div>
+        <div className="grid grid-cols-3 gap-3">
+          {keys.map((k, i) => k === "" ? <span key={i} /> : (
+            <button key={i} onClick={() => press(k)} aria-label={k === "del" ? "Delete" : k}
+              className="h-16 rounded-2xl text-2xl font-semibold flex items-center justify-center active:opacity-60"
+              style={{ background: k === "del" ? "transparent" : "#111C3A", border: k === "del" ? "none" : "1px solid #26365F", color: k === "del" ? "#7C8CB4" : "#E9EFFC" }}>
+              {k === "del" ? "⌫" : k}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -284,6 +306,7 @@ function applyAcquire(cards, data, qty, unitCost, source) {
     if (data.market && !c.priced) { next.market = data.market; next.priced = true; }
     if (data.series && !c.series) { next.series = data.series; next.border = borderOf(data.series); }
     if (data.tcgId && !c.tcgId) next.tcgId = data.tcgId;
+    if (data.image && !c.image) next.image = data.image;
     const copy = [...cards]; copy[idx] = next; return copy;
   }
   const market = num(data.market) || unitCost;
@@ -294,7 +317,7 @@ function applyAcquire(cards, data, qty, unitCost, source) {
     tcgId: data.tcgId || null, qty: q, costPool: q * unitCost, lots: [lot], soldQty: 0, lastAvg: unitCost,
     market, priced: !!num(data.market), pricedAt: data.market ? Date.now() : null,
     history: data.market ? [{ d: Date.now(), v: market }] : [],
-    sticker: null, zone: null, added: Date.now(), lastSold: null,
+    sticker: null, zone: null, added: Date.now(), lastSold: null, image: data.image || null,
   }, ...cards];
 }
 
@@ -343,7 +366,12 @@ function BoothBook() {
     (async () => {
       try {
         const r = await window.storage.get(KEY);
-        if (r?.value) { setDb({ ...BLANK, ...JSON.parse(r.value) }); loaded.current = true; setReady(true); return; }
+        if (r?.value) {
+          const saved = { ...BLANK, ...JSON.parse(r.value) };
+          setDb(saved);
+          if (saved.activeShowId || loadDraft()) setTab("deal");
+          loaded.current = true; setReady(true); return;
+        }
       } catch (e) {}
       try { const o = await window.storage.get(OLDKEY); if (o?.value) setDb(migrate(JSON.parse(o.value))); } catch (e) {}
       loaded.current = true; setReady(true);
@@ -425,7 +453,7 @@ function BoothBook() {
       tradeIn.forEach((r) => {
         cards = applyAcquire(cards, {
           name: r.name, set: r.set, number: r.number, printing: r.printing || "Normal",
-          condition: r.condition || "NM", kind: r.kind, market: r.market, tcgId: r.tcgId, series: r.series, graded: r.graded,
+          condition: r.condition || "NM", kind: r.kind, market: r.market, tcgId: r.tcgId, series: r.series, graded: r.graded, image: r.image,
         }, Math.max(1, Math.round(num(r.qty) || 1)), num(r.price), "Traded in");
       });
       const bq = Math.max(0, Math.round(num(binQty) || 0));
@@ -520,6 +548,7 @@ function BoothBook() {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = `boothbook-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
+    setDb((d) => ({ ...d, lastBackup: Date.now() }));
     flash("Backup downloaded");
   };
 
@@ -527,7 +556,7 @@ function BoothBook() {
     const live = db.cards.filter((c) => c.qty > 0 && !c.graded && carriesSticker(c, mult));
     return live.map((c) => ({
       id: c.id, name: c.name, set: c.set, number: c.number, printing: c.printing,
-      condition: c.condition, price: c.sticker ?? stickerFor(c, mult), qty: c.qty,
+      condition: c.condition, price: c.sticker ?? stickerFor(c, mult), qty: c.qty, image: c.image || null,
     }));
   };
   const doExportCatalog = () => {
@@ -543,10 +572,10 @@ function BoothBook() {
   const activeShow = db.shows.find((s) => s.id === db.activeShowId) || null;
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: C.ink, color: C.text, fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
-      <Header m={m} show={activeShow} alerts={attention.total} onExportBook={doExportBook} onExportCatalog={doExportCatalog} />
+    <div className="min-h-screen pb-32" style={{ background: C.ink, color: C.text, fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
+      <Header m={m} show={activeShow} alerts={attention.total} onExportBook={doExportBook} onExportCatalog={doExportCatalog} compact={tab !== "attention" && tab !== "stats"} lastBackup={db.lastBackup} />
       <div className="px-4 mt-4">
-        {tab === "attention" && <AttentionTab db={db} setDb={setDb} a={attention} mult={mult} flash={flash}
+        {tab === "attention" && <AttentionTab db={db} setDb={setDb} a={attention} mult={mult} flash={flash} onBackup={doExportBook}
           onConfirmSticker={confirmSticker} onConfirmZone={confirmZone} onConfirmAll={confirmAllStickers} onSnooze={snooze} onOpen={(c) => setSheet({ kind: "card", payload: c })} />}
         {tab === "deal" && <DealTab db={db} onCommit={commitDeal} mult={mult} />}
         {tab === "stock" && <StockTab db={db} m={m} mult={mult} setDb={setDb} flash={flash} onAdd={() => setSheet({ kind: "add" })} onScan={(mode) => setSheet({ kind: "scan", payload: mode })} onOpen={(c) => setSheet({ kind: "card", payload: c })} onSell={(c) => setSheet({ kind: "sell", payload: c })} />}
@@ -570,26 +599,47 @@ function BoothBook() {
 }
 
 /* ============================ HEADER ============================ */
-function Header({ m, show, alerts, onExportBook, onExportCatalog }) {
+function Header({ m, show, alerts, onExportBook, onExportCatalog, compact, lastBackup }) {
   const [menu, setMenu] = useState(false);
+  const since = daysSince(lastBackup);
+  const chip = show
+    ? <div className="flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(58,217,196,0.14)", color: C.teal }}>
+        <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.teal }} />{show.name}</div>
+    : <div className="text-xs" style={{ color: C.muted }}>No show running</div>;
+  const menuBtn = (
+    <button onClick={() => setMenu((v) => !v)} aria-label="Backup and export" className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style={{ background: C.surface2 }}>
+      <Download size={18} color={since == null || since >= 7 ? C.gold : C.muted} />
+    </button>
+  );
+  const menuEl = menu && (
+    <div className="rounded-xl p-3 mt-3 space-y-2" style={{ background: C.surface2, border: `1px solid ${C.line}` }}>
+      <div className="text-xs px-1" style={{ color: since == null || since >= 7 ? C.gold : C.muted }}>
+        {since == null ? "Never backed up on this phone" : `Last backup ${since === 0 ? "today" : since === 1 ? "yesterday" : since + " days ago"}`}
+      </div>
+      <button onClick={() => { onExportBook(); setMenu(false); }} className="w-full text-left text-sm rounded-lg py-3 px-3" style={{ background: C.surface, color: C.text }}>Download full backup (private)</button>
+      <button onClick={() => { onExportCatalog(); setMenu(false); }} className="w-full text-left text-sm rounded-lg py-3 px-3" style={{ background: C.surface, color: C.text }}>Download catalog.json for the shop (no cost data)</button>
+    </div>
+  );
+  if (compact) return (
+    <div className="px-4 pt-4 pb-3" style={{ background: C.surface, borderBottom: `1px solid ${C.line}` }}>
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="text-xs tracking-widest font-semibold" style={{ color: C.muted }}>TOWNSEND TCG</div>
+          <div className="font-mono font-bold text-xl leading-tight">{money(m.company)}</div>
+        </div>
+        {chip}{menuBtn}
+      </div>
+      {menuEl}
+    </div>
+  );
   return (
     <div className="px-4 pt-5 pb-5" style={{ background: `linear-gradient(170deg, ${C.surface} 0%, ${C.ink} 100%)`, borderBottom: `1px solid ${C.line}` }}>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between gap-2">
         <div className="text-xs tracking-widest font-semibold" style={{ color: C.muted }}>TOWNSEND TCG</div>
-        <div className="flex items-center gap-2">
-          {show ? <div className="flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(58,217,196,0.14)", color: C.teal }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.teal }} />{show.name}</div>
-            : <div className="text-xs" style={{ color: C.muted }}>No show running</div>}
-          <button onClick={() => setMenu((v) => !v)} className="p-1.5 rounded-lg" style={{ background: C.surface2 }}><Download size={14} color={C.muted} /></button>
-        </div>
+        <div className="flex items-center gap-2">{chip}{menuBtn}</div>
       </div>
-      {menu && (
-        <div className="rounded-xl p-3 mb-4 space-y-2" style={{ background: C.surface2, border: `1px solid ${C.line}` }}>
-          <button onClick={() => { onExportBook(); setMenu(false); }} className="w-full text-left text-xs rounded-lg py-2.5 px-3" style={{ background: C.surface, color: C.text }}>Download full backup (private)</button>
-          <button onClick={() => { onExportCatalog(); setMenu(false); }} className="w-full text-left text-xs rounded-lg py-2.5 px-3" style={{ background: C.surface, color: C.text }}>Download catalog.json for the shop (no cost data)</button>
-        </div>
-      )}
-      <div className="text-xs uppercase tracking-wider mb-1" style={{ color: C.muted }}>Company value</div>
+      {menuEl}
+      <div className="text-xs uppercase tracking-wider mb-1 mt-4" style={{ color: C.muted }}>Company value</div>
       <div className="font-mono font-bold leading-none mb-4" style={{ fontSize: 42, letterSpacing: "-0.03em" }}>{money(m.company)}</div>
       <div className="h-2.5 rounded-full overflow-hidden flex mb-2" style={{ background: C.surface2 }}>
         <div style={{ width: `${m.cashPct}%`, background: C.teal, transition: "width 400ms ease" }} />
@@ -621,7 +671,7 @@ function Stat({ label, hint, value }) {
 }
 
 /* =========================== ATTENTION =========================== */
-function AttentionTab({ db, setDb, a, mult, onConfirmSticker, onConfirmZone, onConfirmAll, onSnooze, onOpen, flash }) {
+function AttentionTab({ db, setDb, a, mult, onConfirmSticker, onConfirmZone, onConfirmAll, onSnooze, onOpen, flash, onBackup }) {
   const [busy, setBusy] = useState(false); const [prog, setProg] = useState(0);
   const [open, setOpen] = useState("relocate");
 
@@ -636,7 +686,7 @@ function AttentionTab({ db, setDb, a, mult, onConfirmSticker, onConfirmZone, onC
           hits++;
           setDb((d) => ({
             ...d, cards: d.cards.map((x) => x.id === c.id ? {
-              ...x, market: res.market, priced: true, pricedAt: Date.now(), tcgId: res.tcgId || x.tcgId,
+              ...x, market: res.market, priced: true, pricedAt: Date.now(), tcgId: res.tcgId || x.tcgId, image: res.image || x.image,
               series: x.series || res.series, border: x.border || borderOf(res.series),
               history: [...(x.history || []), { d: Date.now(), v: res.market }].slice(-40),
             } : x),
@@ -653,6 +703,9 @@ function AttentionTab({ db, setDb, a, mult, onConfirmSticker, onConfirmZone, onC
   const bin = db.dollarBin || BLANK.dollarBin;
   const lowBin = bin.qty > 0 && bin.qty < (bin.refillAt || 100);
 
+  const bSince = daysSince(db.lastBackup);
+  const backupDue = db.cards.some((c) => c.qty > 0) && (bSince == null || bSince >= 7);
+
   const checkDay = db.checkDay ?? 5;
   const since = daysSince(db.lastCheck);
   const isCheckDay = new Date().getDay() === checkDay;
@@ -664,6 +717,14 @@ function AttentionTab({ db, setDb, a, mult, onConfirmSticker, onConfirmZone, onC
 
   return (
     <div>
+      {backupDue && <div className="rounded-xl p-4 mb-3 flex items-center gap-3" style={{ background: C.surface, border: "1px solid rgba(240,184,73,0.45)" }}>
+        <AlertTriangle size={18} color={C.gold} className="shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold">{bSince == null ? "No backup yet" : `Last backup ${bSince} days ago`}</div>
+          <div className="text-xs" style={{ color: C.muted }}>Your stock only lives on this phone. Save a copy to Files or Drive.</div>
+        </div>
+        <button onClick={onBackup} className="px-4 h-12 rounded-lg font-semibold text-sm shrink-0" style={{ background: C.gold, color: C.ink }}>Back up</button>
+      </div>}
       <div className="rounded-xl p-4 mb-3" style={{ background: C.surface, border: `1px solid ${due ? "rgba(240,184,73,0.45)" : C.line}` }}>
         <div className="flex items-center gap-2 mb-1">
           <Clock size={14} color={due ? C.gold : C.muted} />
@@ -748,7 +809,7 @@ function AttentionTab({ db, setDb, a, mult, onConfirmSticker, onConfirmZone, onC
         <div className="text-xs mb-2" style={{ color: C.muted }}>Reprice day</div>
         <div className="flex gap-1">
           {DAYNAMES.map((d, i) => (
-            <button key={d} onClick={() => setDb((x) => ({ ...x, checkDay: i }))} className="flex-1 py-2 rounded text-xs font-semibold"
+            <button key={d} onClick={() => setDb((x) => ({ ...x, checkDay: i }))} className="flex-1 py-3 rounded text-xs font-semibold"
               style={{ background: checkDay === i ? C.teal : C.surface2, color: checkDay === i ? C.ink : C.muted }}>{d.slice(0, 1)}</button>
           ))}
         </div>
@@ -799,9 +860,9 @@ function Row({ card, sub, right, onOpen, onDone, onSkip }) {
         <div className="text-xs truncate" style={{ color: C.muted }}>{sub}</div>
       </button>
       <div className="shrink-0">{right}</div>
-      {onSkip && <button onClick={onSkip} title="Leave the sticker as is" className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: C.surface }}>
+      {onSkip && <button onClick={onSkip} title="Leave the sticker as is" className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0" style={{ background: C.surface }}>
         <X size={15} color={C.muted} /></button>}
-      {onDone && <button onClick={onDone} className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: C.surface }}>
+      {onDone && <button onClick={onDone} className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0" style={{ background: C.surface }}>
         <Check size={16} color={C.teal} /></button>}
     </div>
   );
@@ -809,10 +870,19 @@ function Row({ card, sub, right, onOpen, onDone, onSkip }) {
 
 /* ============================= DEAL ============================= */
 const emptyDraft = () => ({ sold: [], tradeIn: [], payments: [{ id: uid(), amount: "", method: "Cash" }], change: [], thumbs: [], note: "", binQty: "" });
+const DRAFT_KEY = "boothbook_deal_draft";
+function loadDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+    const busy = d && (d.sold?.length || d.tradeIn?.length || d.change?.length || num(d.binQty) > 0 || (d.payments || []).some((p) => num(p.amount) > 0));
+    return busy ? { ...emptyDraft(), ...d } : null;
+  } catch { return null; }
+}
 
 function DealTab({ db, onCommit, mult }) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(emptyDraft);
+  const [draft, setDraft] = useState(() => loadDraft() || emptyDraft());
+  const [open, setOpen] = useState(() => !!loadDraft());
+  useEffect(() => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch {} }, [draft]);
   const [reading, setReading] = useState(false);
   const [err, setErr] = useState("");
   const fileRef = useRef(null);
@@ -844,7 +914,7 @@ function DealTab({ db, onCommit, mult }) {
         const res = await tcgLookup(r.name, r.set, r.number, { printing: r.printing });
         setRow(bucket, r.id, res ? {
           priceState: "done", market: res.market, set: res.set || r.set, number: res.number || r.number,
-          printing: res.printing || r.printing, tcgId: res.tcgId, series: res.series,
+          printing: res.printing || r.printing, tcgId: res.tcgId, series: res.series, image: res.image,
           price: r.price || String(Math.round(res.market * 100) / 100),
         } : { priceState: "miss" });
       } catch { setRow(bucket, r.id, { priceState: "miss" }); }
@@ -913,7 +983,7 @@ function DealTab({ db, onCommit, mult }) {
                 <div className="text-sm truncate">{d.note || `${d.soldCount} sold · ${d.tradeCount} taken in`}</div>
                 <div className="text-xs" style={{ color: C.muted }}>{money0(d.paidIn)} in · {money0(d.changeOut)} change · {new Date(d.date).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>
               </div>
-              <div className="font-mono font-semibold text-sm shrink-0" style={{ color: (d.paidIn - d.changeOut) >= 0 ? C.teal : C.loss }}>{money0(d.paidIn - d.changeOut)}</div>
+              <div className="font-mono font-semibold text-sm shrink-0" style={{ color: (d.paidIn - d.changeOut) >= 0 ? C.teal : C.loss }}>{(d.paidIn - d.changeOut) >= 0 ? "+" : ""}{money0(d.paidIn - d.changeOut)}</div>
             </div>
           ))}
         </div>
@@ -930,7 +1000,7 @@ function DealTab({ db, onCommit, mult }) {
           <button onClick={() => fileRef.current?.click()} className="w-11 h-11 rounded-lg flex items-center justify-center" style={{ background: C.surface2, border: `1px dashed ${C.line}` }}>
             <Camera size={17} color={C.muted} /></button>
         </div>
-        <button onClick={reset} className="p-2 rounded-lg" style={{ background: C.surface2 }}><X size={18} color={C.muted} /></button>
+        <button onClick={reset} aria-label="Cancel deal" className="w-11 h-11 rounded-lg flex items-center justify-center" style={{ background: C.surface2 }}><X size={18} color={C.muted} /></button>
       </div>
       {reading && <div className="rounded-xl py-8 mb-4 flex flex-col items-center gap-2" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
         <Loader2 className="animate-spin" size={24} color={C.teal} /><div className="text-sm" style={{ color: C.muted }}>Reading the table</div></div>}
@@ -971,6 +1041,15 @@ function DealTab({ db, onCommit, mult }) {
         {Math.abs(T.gap) < 0.5 ? <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: C.teal }}><Check size={16} /> Balanced</div>
           : <div className="flex items-start gap-2 text-sm" style={{ color: C.gold }}><AlertTriangle size={15} className="shrink-0 mt-0.5" />
               <span>{T.gap < 0 ? `You discounted ${money(Math.abs(T.gap))}.` : `You came out ${money(T.gap)} ahead.`}</span></div>}
+        {T.gap < -0.5 && <div className="flex items-center gap-3 mt-3">
+          <button onClick={() => setDraft((d) => {
+            const ps = d.payments.length ? d.payments : [{ id: uid(), amount: "", method: "Cash" }];
+            return { ...d, payments: ps.map((p, i) => (i === 0 ? { ...p, amount: String(Math.round((num(p.amount) - T.gap) * 100) / 100) } : p)) };
+          })} className="px-4 h-12 rounded-lg text-sm font-semibold" style={{ background: C.teal, color: C.ink }}>Collect {money(-T.gap)}</button>
+          <span className="text-xs" style={{ color: C.muted }}>or leave it as a discount</span>
+        </div>}
+        {T.gap > 0.5 && <button onClick={() => setDraft((d) => ({ ...d, change: [...d.change, { id: uid(), amount: String(Math.round(T.gap * 100) / 100), method: "Cash" }] }))}
+          className="w-full h-12 rounded-lg text-sm font-semibold mt-3" style={{ background: C.gold, color: C.ink }}>Give {money(T.gap)} change</button>}
         <div className="flex justify-between text-sm mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
           <span style={{ color: C.muted }}>Net into the drawer</span>
           <span className="font-mono font-bold" style={{ color: T.net >= 0 ? C.teal : C.loss }}>{T.net >= 0 ? "+" : ""}{money(T.net)}</span>
@@ -990,7 +1069,7 @@ function Leg({ n, title, total, color, Icon, onAdd, children }) {
         <div className="w-5 h-5 rounded flex items-center justify-center text-xs font-bold shrink-0" style={{ background: color, color: C.ink }}>{n}</div>
         <Icon size={14} color={color} /><span className="text-sm font-semibold flex-1">{title}</span>
         <span className="font-mono text-sm" style={{ color }}>{money(total)}</span>
-        <button onClick={onAdd} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.surface2 }}><Plus size={15} color={C.muted} /></button>
+        <button onClick={onAdd} aria-label={`Add to ${title}`} className="w-11 h-11 rounded-lg flex items-center justify-center" style={{ background: C.surface2 }}><Plus size={18} color={C.muted} /></button>
       </div>
       <div className="space-y-2">{children}</div>
     </div>
@@ -999,15 +1078,24 @@ function Leg({ n, title, total, color, Icon, onAdd, children }) {
 const Hint = ({ text }) => <div className="text-xs px-3 py-2.5 rounded-lg" style={{ color: C.muted, background: C.surface }}>{text}</div>;
 
 function MoneyRow({ p, tint, onSet, onDrop }) {
+  const bump = (n) => onSet({ amount: String(Math.round((num(p.amount) + n) * 100) / 100) });
   return (
-    <div className="flex gap-2 items-center rounded-xl p-2.5" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
-      <input value={p.amount} onChange={(e) => onSet({ amount: e.target.value })} inputMode="decimal" placeholder="0.00"
-        className="flex-1 rounded-lg py-2.5 px-3 font-mono text-base outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: tint }} />
-      <select value={p.method} onChange={(e) => onSet({ method: e.target.value })} className="rounded-lg py-2.5 px-2 text-sm outline-none"
-        style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }}>
-        {METHODS.map((k) => <option key={k} value={k} style={{ background: C.surface }}>{k}</option>)}
-      </select>
-      <button onClick={onDrop} className="p-2 rounded-lg shrink-0" style={{ background: C.surface2 }}><X size={14} color={C.muted} /></button>
+    <div className="rounded-xl p-2.5" style={{ background: C.surface, border: `1px solid ${C.line}` }}>
+      <div className="flex gap-2 items-center">
+        <input value={p.amount} onChange={(e) => onSet({ amount: e.target.value })} inputMode="decimal" placeholder="0.00"
+          className="flex-1 min-w-0 rounded-lg py-3 px-3 font-mono text-lg outline-none" style={{ background: C.surface2, border: `1px solid ${C.line}`, color: tint }} />
+        <select value={p.method} onChange={(e) => onSet({ method: e.target.value })} className="rounded-lg py-3.5 px-2 text-sm outline-none"
+          style={{ background: C.surface2, border: `1px solid ${C.line}`, color: C.text }}>
+          {METHODS.map((k) => <option key={k} value={k} style={{ background: C.surface }}>{k}</option>)}
+        </select>
+        <button onClick={onDrop} aria-label="Remove" className="w-11 h-11 rounded-lg shrink-0 flex items-center justify-center" style={{ background: C.surface2 }}><X size={16} color={C.muted} /></button>
+      </div>
+      <div className="flex gap-1.5 mt-2">
+        {[1, 5, 10, 20, 50].map((n) => (
+          <button key={n} onClick={() => bump(n)} className="flex-1 h-11 rounded-lg font-mono text-sm font-semibold" style={{ background: C.surface2, color: tint }}>+{n}</button>
+        ))}
+        <button onClick={() => onSet({ amount: "" })} className="px-3 h-11 rounded-lg text-sm" style={{ background: C.surface2, color: C.muted }}>Clear</button>
+      </div>
     </div>
   );
 }
@@ -1026,10 +1114,10 @@ function CardRow({ r, tint, priceLabel, onSet, onDrop, onMove, moveLabel, showCo
             {r.matchedCardId && <span style={{ color: C.teal }}>· avg {money(r.matchedAvg || 0)}</span>}
           </div>
         </div>
-        <button onClick={onDrop} className="p-1.5 rounded-lg shrink-0" style={{ background: C.surface2 }}><X size={14} color={C.muted} /></button>
+        <button onClick={onDrop} aria-label="Remove" className="w-11 h-11 rounded-lg shrink-0 flex items-center justify-center" style={{ background: C.surface2 }}><X size={16} color={C.muted} /></button>
       </div>
       {showCondition && <div className="flex gap-1 mb-2">
-        {CONDITIONS.map((k) => <button key={k} onClick={() => onSet({ condition: k })} className="flex-1 py-1.5 rounded text-xs font-semibold"
+        {CONDITIONS.map((k) => <button key={k} onClick={() => onSet({ condition: k })} className="flex-1 py-2.5 rounded text-xs font-semibold"
           style={{ background: r.condition === k ? tint : C.surface2, color: r.condition === k ? C.ink : C.muted }}>{k}</button>)}
       </div>}
       <div className="flex gap-2 items-center mb-2">
@@ -1043,7 +1131,7 @@ function CardRow({ r, tint, priceLabel, onSet, onDrop, onMove, moveLabel, showCo
             : r.market ? `mkt ${money0(r.market)}` : r.priceState === "miss" ? "no match" : ""}
         </div>
       </div>
-      <button onClick={onMove} className="flex items-center gap-1.5 text-xs" style={{ color: C.muted }}><ArrowLeftRight size={12} /> {moveLabel}</button>
+      <button onClick={onMove} className="flex items-center gap-1.5 text-sm py-2" style={{ color: C.muted }}><ArrowLeftRight size={14} /> {moveLabel}</button>
     </div>
   );
 }
@@ -1074,7 +1162,7 @@ function StockTab({ db, m, mult, onAdd, onScan, onOpen, onSell, setDb, flash }) 
       </div>
       <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
         {[["all", "All"], ...Object.entries(ZONES).map(([k, v]) => [k, v.short])].map(([k, l]) => (
-          <button key={k} onClick={() => setZone(k)} className="px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap"
+          <button key={k} onClick={() => setZone(k)} className="px-3.5 py-3 rounded-lg text-xs font-semibold whitespace-nowrap"
             style={{ background: zone === k ? C.teal : C.surface2, color: zone === k ? C.ink : C.muted }}>{l}</button>
         ))}
       </div>
@@ -1097,7 +1185,9 @@ function StockTab({ db, m, mult, onAdd, onScan, onOpen, onSell, setDb, flash }) 
             return (
               <div key={c.id} className="rounded-xl p-3.5" style={{ background: C.surface, border: `1px solid ${off ? "rgba(240,184,73,0.4)" : C.line}` }}>
                 <button onClick={() => onOpen(c)} className="w-full text-left flex items-center gap-3">
-                  <div className="w-1 h-9 rounded-full shrink-0" style={{ background: c.border === "yellow" ? C.gold : C.purple }} />
+                  {c.image
+                    ? <img src={c.image} alt="" loading="lazy" className="w-10 rounded shrink-0" style={{ aspectRatio: "63/88", objectFit: "cover" }} />
+                    : <div className="w-1 h-9 rounded-full shrink-0" style={{ background: c.border === "yellow" ? C.gold : C.purple }} />}
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm truncate">{c.name}</div>
                     <div className="text-xs mt-0.5 truncate" style={{ color: C.muted }}>
@@ -1114,7 +1204,7 @@ function StockTab({ db, m, mult, onAdd, onScan, onOpen, onSell, setDb, flash }) 
                 <div className="flex items-center gap-3 mt-2.5 pt-2.5 text-xs" style={{ borderTop: `1px solid ${C.line}` }}>
                   <span className="flex items-center gap-1" style={{ color: C.muted }}><Layers size={12} /> {c.qty}</span>
                   <span style={{ color: C.muted }}>avg <span className="font-mono" style={{ color: C.text }}>{money(avg)}</span></span>
-                  <button onClick={() => onSell(c)} className="ml-auto px-3 py-1.5 rounded-lg font-semibold" style={{ background: C.teal, color: C.ink }}>Sell</button>
+                  <button onClick={() => onSell(c)} className="ml-auto px-5 py-2.5 rounded-lg font-semibold text-sm" style={{ background: C.teal, color: C.ink }}>Sell</button>
                 </div>
               </div>
             );
@@ -1292,14 +1382,14 @@ function Nav({ tab, setTab, alerts }) {
     { id: "stats", label: "Stats", Icon: BarChart3 },
   ];
   return (
-    <div className="fixed bottom-0 left-0 right-0 flex" style={{ background: C.surface, borderTop: `1px solid ${C.line}`, zIndex: 50 }}>
+    <div className="fixed bottom-0 left-0 right-0 flex" style={{ background: C.surface, borderTop: `1px solid ${C.line}`, zIndex: 50, paddingBottom: "env(safe-area-inset-bottom)" }}>
       {items.map(({ id, label, Icon, badge }) => (
         <button key={id} onClick={() => setTab(id)} className="flex-1 flex flex-col items-center gap-1 py-3.5 relative" style={{ color: tab === id ? C.teal : C.muted }}>
           <div className="relative">
-            <Icon size={19} />
+            <Icon size={22} />
             {badge > 0 && <span className="absolute -top-1.5 -right-2 px-1.5 rounded-full text-xs font-bold" style={{ background: C.gold, color: C.ink, fontSize: 10 }}>{badge}</span>}
           </div>
-          <span className="text-xs font-medium">{label}</span>
+          <span className="text-sm font-medium">{label}</span>
         </button>
       ))}
     </div>
@@ -1313,7 +1403,7 @@ function Sheet({ title, onClose, children }) {
       <div className="w-full rounded-t-2xl p-5 max-h-full overflow-y-auto" style={{ background: C.surface, borderTop: `1px solid ${C.line}` }} onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <div className="font-semibold pr-3">{title}</div>
-          <button onClick={onClose} className="p-1.5 rounded-lg shrink-0" style={{ background: C.surface2 }}><X size={18} color={C.muted} /></button>
+          <button onClick={onClose} aria-label="Close" className="w-11 h-11 rounded-lg shrink-0 flex items-center justify-center" style={{ background: C.surface2 }}><X size={18} color={C.muted} /></button>
         </div>
         {children}
       </div>
@@ -1333,7 +1423,7 @@ function Chips({ label, options, value, onChange, tint = C.teal }) {
     <div className="mb-3">
       {label && <label className="text-xs block mb-1.5" style={{ color: C.muted }}>{label}</label>}
       <div className="flex gap-1.5">
-        {options.map((k) => <button key={k} onClick={() => onChange(k)} className="flex-1 py-2.5 rounded-lg text-xs font-semibold"
+        {options.map((k) => <button key={k} onClick={() => onChange(k)} className="flex-1 py-3 rounded-lg text-xs font-semibold"
           style={{ background: value === k ? tint : C.surface2, color: value === k ? C.ink : C.muted }}>{k}</button>)}
       </div>
     </div>
@@ -1432,7 +1522,7 @@ function CardSheet({ card, all, onClose, onSave, onDelete, onMerge, onAddLot, tc
     setBusy(true); setNote("");
     try {
       const res = await tcgLookup(card.name, card.set, card.number, { tcgId: card.tcgId, printing: card.printing });
-      if (res) { setMk(String(res.market)); setNote(`${res.set} · ${res.printing} · ${borderOf(res.series)} border`); onSave(card.id, { series: res.series, border: borderOf(res.series), tcgId: res.tcgId }); }
+      if (res) { setMk(String(res.market)); setNote(`${res.set} · ${res.printing} · ${borderOf(res.series)} border`); onSave(card.id, { series: res.series, border: borderOf(res.series), tcgId: res.tcgId, image: res.image || card.image }); }
       else setNote("No match. Enter it manually.");
     } catch { setNote("Lookup failed."); }
     setBusy(false);
@@ -1637,7 +1727,7 @@ function ScanSheet({ mode: startMode, db, mult, onClose, onConfirm }) {
     qty: Math.max(1, Math.round(num(r.qty) || 1)),
     unitCost: Math.round(unitCostOf(r) * 100) / 100,
     data: { name: r.name.trim(), set: r.set, number: r.number, printing: r.printing, condition: r.condition, kind: r.kind,
-      graded: r.graded, market: r.market || 0, tcgId: r.tcgId, series: r.series },
+      graded: r.graded, market: r.market || 0, tcgId: r.tcgId, series: r.series, image: r.image },
   })), pay);
 
   return (
@@ -1721,7 +1811,7 @@ function ScanRow({ r, mode, mult, have, unitCost, lot, onSet, onDrop, onReprice 
                 {r.set || "set unknown"}{r.number ? ` · #${r.number}` : ""}{r.graded ? ` · ${r.grade || "graded"}` : ""}
               </div>
             </div>
-            <button onClick={onDrop} className="p-1.5 rounded-lg shrink-0" style={{ background: C.surface2 }}><X size={14} color={C.muted} /></button>
+            <button onClick={onDrop} aria-label="Remove" className="w-11 h-11 rounded-lg shrink-0 flex items-center justify-center" style={{ background: C.surface2 }}><X size={16} color={C.muted} /></button>
           </div>
           <div className="flex items-baseline gap-2 mt-1.5">
             {r.state === "loading" || r.state === "idle" ? <span className="text-xs" style={{ color: C.muted }}>Checking price…</span>
@@ -1746,7 +1836,7 @@ function ScanRow({ r, mode, mult, have, unitCost, lot, onSet, onDrop, onReprice 
           {r.kind === "sealed" && <input value={r.market || ""} onChange={(e) => onSet({ market: num(e.target.value) || null, state: "done" })} inputMode="decimal" placeholder="market" className={`w-24 font-mono ${inputCls}`} style={inputSty} />}
         </div>
       </>}
-      <button onClick={() => setEdit(!edit)} className="text-xs mt-2" style={{ color: C.muted }}>{edit ? "Close" : "Wrong card? Edit it"}</button>
+      <button onClick={() => setEdit(!edit)} className="text-sm mt-1 py-2" style={{ color: C.muted }}>{edit ? "Close" : "Wrong card? Edit it"}</button>
       {edit && <div className="mt-2 space-y-2">
         <input value={r.name} onChange={(e) => onSet({ name: e.target.value })} placeholder="Card name" className={`w-full ${inputCls}`} style={inputSty} />
         <div className="flex gap-2">
