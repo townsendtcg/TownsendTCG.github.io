@@ -47,14 +47,31 @@ It's a screen-door, not real security — the PIN is sitting in the page's own
 source, so anyone who reads the file can read it. It just keeps a stumbled-upon
 link from being poked at. Change `PIN_CODE` near the top of `pos.html` any time.
 
-## Photo-based card reading ("Snap the deal")
+## Card scanning and prices
 
-Works when `pos.html` is opened inside a Claude artifact (it calls the model
-directly there). On this GitHub-hosted version there's no backend to proxy that
-call, so the button shows a manual-entry fallback instead. Wiring up a small
-serverless function (Vercel, Cloudflare Workers) to restore it is a good next
-step once this is worth the extra moving part — `api/vision.js` in this repo's
-history has a working example to start from.
+`pos.html` has three photo tools, all on the Stock and Deal tabs:
+
+- **Scan to add**: photo of one card or a whole binder page. Each card comes back with
+  its TCGdex image, market price, sticker price and case/binder zone. Fix anything,
+  set condition and cost (or enter one price for the whole lot and it gets split by
+  market value), then add them all at once.
+- **Price check**: same scan, nothing saved. Shows if you already have it in stock.
+- **Snap the deal**: photo of the table during a sale or trade fills in the deal.
+
+How it fits together: the photo goes to a Cloudflare Worker called `tcg-scanner`
+(`https://tcg-scanner.austin-m-townsend.workers.dev`). The Worker holds the Gemini API
+key as a secret, asks Gemini to read the cards, and only accepts requests from this
+site. Its source is in `worker/scanner.js` (no secrets in it). If Google's main model
+is busy it falls back to a lighter one automatically.
+
+Prices come from [TCGdex](https://tcgdex.dev) (free, no key), which reports TCGplayer
+market prices by printing. pokemontcg.io moved behind the paid Scrydex service, so it
+is no longer used. Graded slabs, sealed product and non-English cards still show the
+raw English price, so check those by hand.
+
+To change the Worker: edit `worker/scanner.js`, then paste it into the Worker in the
+Cloudflare dashboard (or ask Claude to deploy it). Opening the Worker URL in a browser
+shows `{"ok":true,"keySet":true,...}` when it's healthy.
 
 ## Backing up the register
 
