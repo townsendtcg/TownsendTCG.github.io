@@ -36,10 +36,9 @@
   source can read the PIN. It just keeps a casual visitor who finds the link
   from poking around. Change PIN_CODE any time by editing this file.
 
-  Photo-based card reading ("Snap the deal") needs a small server to proxy
-  the vision call — this static deployment doesn't have one, so that button
-  is disabled here with a note. Manual entry works fully. Add a backend later
-  (see the README) to turn it back on.
+  Photo scanning ("Snap the deal", "Scan to add", "Price check") sends the photo
+  to a small Cloudflare Worker (tcg-scanner) that holds the Gemini key and reads
+  the cards. Prices come from TCGdex. Source for the Worker is in worker/scanner.js.
 -->
 
 <script type="text/babel" data-type="module" data-presets="react">
@@ -166,7 +165,14 @@ const slug = (s) => (s || "").toString().toLowerCase().replace(/[^a-z0-9]/g, "")
 const DAY = 86400000;
 const daysSince = (t) => (t ? Math.floor((Date.now() - t) / DAY) : null);
 
-const visionUrl = () => "/api/vision"; // not wired up on this deployment — see the note at the top of this file
+const SCAN_URL = "https://tcg-scanner.austin-m-townsend.workers.dev"; // Cloudflare Worker relay to Gemini (tcg-scanner)
+async function scanPhoto(dataUrl, mode) {
+  const res = await fetch(SCAN_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: dataUrl.split(",")[1], mode }) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(res.status === 429 ? "The scanner hit its free limit for the moment. Wait a minute and try again." : (data.error || "Scan failed. Try again."));
+  return data;
+}
+const scanErr = (e) => (e?.message && e.message !== "Failed to fetch" ? e.message : "Couldn't reach the scanner. Check your signal and try again, or add cards by hand.");
 
 const borderOf = (series) => (YELLOW_SERIES.includes(slug(series)) ? "yellow" : "silver");
 const valueOf = (c, mult = 1) => (c.market || 0) * (COND_MULT[c.condition] ?? 1) * mult;
@@ -460,6 +466,21 @@ function BoothBook() {
     flash(`Added ${qty}x ${data.name}`);
   };
 
+  const acquireMany = (items, payWithCash) => {
+    const units = sum(items, (it) => it.qty);
+    setDb((d) => {
+      let cards = d.cards, spend = 0;
+      items.forEach((it) => { cards = applyAcquire(cards, it.data, it.qty, it.unitCost, "Bought"); spend += it.qty * it.unitCost; });
+      return {
+        ...d, cards,
+        ledger: payWithCash && spend > 0
+          ? [{ id: uid(), date: Date.now(), amount: -spend, method: "Cash", type: "buy", note: `Bought ${units} scanned cards`, showId: d.activeShowId }, ...d.ledger]
+          : d.ledger,
+      };
+    });
+    flash(`Added ${units} card${units === 1 ? "" : "s"} to stock`);
+  };
+
   const sellCard = (card, qty, price, method) => {
     setDb((d) => {
       const res = applySale(d.cards, card.id, qty);
@@ -528,7 +549,7 @@ function BoothBook() {
         {tab === "attention" && <AttentionTab db={db} setDb={setDb} a={attention} mult={mult} flash={flash}
           onConfirmSticker={confirmSticker} onConfirmZone={confirmZone} onConfirmAll={confirmAllStickers} onSnooze={snooze} onOpen={(c) => setSheet({ kind: "card", payload: c })} />}
         {tab === "deal" && <DealTab db={db} onCommit={commitDeal} mult={mult} />}
-        {tab === "stock" && <StockTab db={db} m={m} mult={mult} setDb={setDb} flash={flash} onAdd={() => setSheet({ kind: "add" })} onOpen={(c) => setSheet({ kind: "card", payload: c })} onSell={(c) => setSheet({ kind: "sell", payload: c })} />}
+        {tab === "stock" && <StockTab db={db} m={m} mult={mult} setDb={setDb} flash={flash} onAdd={() => setSheet({ kind: "add" })} onScan={(mode) => setSheet({ kind: "scan", payload: mode })} onOpen={(c) => setSheet({ kind: "card", payload: c })} onSell={(c) => setSheet({ kind: "sell", payload: c })} />}
         {tab === "cash" && <CashTab db={db} m={m} setDb={setDb} onEntry={() => setSheet({ kind: "ledger" })} />}
         {tab === "stats" && <StatsTab db={db} m={m} setDb={setDb} onToggleShow={toggleShow} active={activeShow} />}
       </div>
@@ -542,6 +563,7 @@ function BoothBook() {
         onClose={() => setSheet(null)} onSave={updateCard} onDelete={(id) => { deleteCard(id); setSheet(null); }}
         onMerge={(s, t) => { doMerge(s, t); setSheet(null); }}
         onAddLot={(id, qty, cost, pay) => { const c = db.cards.find((x) => x.id === id); acquire({ ...c }, qty, cost, pay, "Bought"); setSheet(null); }} />}
+      {sheet?.kind === "scan" && <ScanSheet mode={sheet.payload} db={db} mult={mult} onClose={() => setSheet(null)} onConfirm={(items, pay) => { acquireMany(items, pay); setSheet(null); }} />}
       {sheet?.kind === "ledger" && <LedgerSheet onClose={() => setSheet(null)} onConfirm={(a, t, n, mth) => { addLedger(a, t, n, mth); setSheet(null); }} />}
     </div>
   );
@@ -834,26 +856,7 @@ function DealTab({ db, onCommit, mult }) {
     setErr(""); setReading(true); setOpen(true);
     try {
       const big = await resize(file, 1600, 0.85), small = await resize(file, 260, 0.5);
-      const res = await fetch(visionUrl(), {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6", max_tokens: 1000,
-          messages: [{ role: "user", content: [
-            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: big.split(",")[1] } },
-            { type: "text", text: `This photo shows a Pokemon TCG table transaction: cards and possibly cash. Identify every distinct card or sealed product visible. Read the card name, the set name if legible, and the collector number if visible. Note reverse holo or holo if you can tell, and whether a card is in a graded slab. Also estimate total US dollars of visible cash; bills may overlap, so lower confidence accordingly.
-
-Respond with ONLY JSON, no fences, no preamble:
-{"cards":[{"name":"","set":"","number":"","printing":"Normal|Holo|Reverse","graded":false,"kind":"single|sealed","confidence":"high|medium|low"}],"cash":<number>}
-
-Use empty strings for unreadable fields. Use 0 if no cash is visible.` },
-          ] }],
-        }),
-      });
-      if (!res.ok) throw new Error("no backend");
-      const data = await res.json();
-      const text = data.content.filter((c) => c.type === "text").map((c) => c.text).join("\n");
-      const match = text.replace(/```json|```/g, "").trim().match(/\{[\s\S]*\}/);
-      const parsed = JSON.parse(match ? match[0] : "{}");
+      const parsed = await scanPhoto(big, "deal");
       const cards = parsed.cards || [];
       if (!cards.length) setErr("No cards read. Try a flatter angle with less glare, or add rows by hand.");
       const live = db.cards.filter((c) => c.qty > 0);
@@ -879,7 +882,7 @@ Use empty strings for unreadable fields. Use 0 if no cash is visible.` },
       priceRows(soldNew, "sold"); priceRows(tradeNew, "tradeIn");
     } catch (e) {
       console.error(e);
-      setErr("Photo scanning isn't wired up on this deployment yet (needs a small backend). Add cards below by hand instead.");
+      setErr(scanErr(e));
       setReading(false);
     }
     if (fileRef.current) fileRef.current.value = "";
@@ -1046,7 +1049,7 @@ function CardRow({ r, tint, priceLabel, onSet, onDrop, onMove, moveLabel, showCo
 }
 
 /* ============================ STOCK ============================= */
-function StockTab({ db, m, mult, onAdd, onOpen, onSell, setDb, flash }) {
+function StockTab({ db, m, mult, onAdd, onScan, onOpen, onSell, setDb, flash }) {
   const [q, setQ] = useState(""); const [zone, setZone] = useState("all");
   const live = db.cards.filter((c) => c.qty > 0);
   const filtered = live.filter((c) => {
@@ -1075,8 +1078,16 @@ function StockTab({ db, m, mult, onAdd, onOpen, onSell, setDb, flash }) {
             style={{ background: zone === k ? C.teal : C.surface2, color: zone === k ? C.ink : C.muted }}>{l}</button>
         ))}
       </div>
-      <button onClick={onAdd} className="w-full flex items-center justify-center gap-2 rounded-xl py-4 mb-4 font-semibold active:opacity-80" style={{ background: C.purple, color: "#fff" }}>
-        <Plus size={18} /> Add inventory
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <button onClick={() => onScan("add")} className="flex items-center justify-center gap-2 rounded-xl py-4 font-semibold active:opacity-80" style={{ background: C.purple, color: "#fff" }}>
+          <Camera size={18} /> Scan to add
+        </button>
+        <button onClick={() => onScan("check")} className="flex items-center justify-center gap-2 rounded-xl py-4 font-semibold active:opacity-80" style={{ background: C.surface2, color: C.text, border: `1px solid ${C.line}` }}>
+          <Search size={18} /> Price check
+        </button>
+      </div>
+      <button onClick={onAdd} className="w-full flex items-center justify-center gap-2 rounded-xl py-3 mb-4 text-sm font-semibold active:opacity-80" style={{ background: "transparent", color: C.muted, border: `1px dashed ${C.line}` }}>
+        <Plus size={16} /> Add by hand
       </button>
       {filtered.length === 0 ? <Empty text="Nothing here." /> : (
         <div className="space-y-2">
@@ -1558,6 +1569,193 @@ function LedgerSheet({ onClose, onConfirm }) {
         <Check size={18} /> Record {money(num(amt))}
       </BigBtn>
     </Sheet>
+  );
+}
+
+/* ============================ SCANNER ============================ */
+const inputCls = "rounded-lg py-2.5 px-3 text-sm outline-none";
+const inputSty = { background: C.surface2, border: `1px solid ${C.line}`, color: C.text };
+
+function ScanSheet({ mode: startMode, db, mult, onClose, onConfirm }) {
+  const [mode, setMode] = useState(startMode || "add");
+  const [rows, setRows] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [lotTotal, setLotTotal] = useState("");
+  const [pay, setPay] = useState(true);
+  const camRef = useRef(null), libRef = useRef(null);
+
+  const setRow = (id, p) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...p } : r)));
+  const dropRow = (id) => setRows((rs) => rs.filter((r) => r.id !== id));
+
+  const price = async (row) => {
+    if (row.kind === "sealed") { setRow(row.id, { state: "miss" }); return; }
+    setRow(row.id, { state: "loading" });
+    try {
+      const res = await tcgLookup(row.name, row.set, row.number, { printing: row.printing });
+      if (res) setRow(row.id, {
+        state: "done", market: res.market, set: res.set || row.set, number: res.number || row.number,
+        printing: row.userPrinting ? row.printing : (res.printing || row.printing),
+        tcgId: res.tcgId, series: res.series, image: res.image,
+      });
+      else setRow(row.id, { state: "miss", market: null, image: null, tcgId: null });
+    } catch { setRow(row.id, { state: "miss" }); }
+  };
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0]; e.target.value = ""; if (!file) return;
+    setErr(""); setBusy(true);
+    try {
+      const big = await resize(file, 1600, 0.85);
+      const data = await scanPhoto(big, "add");
+      const found = (data.cards || []).map((c) => ({
+        id: uid(), name: c.name || "", set: c.set || "", number: c.number || "",
+        printing: PRINTINGS.includes(c.printing) ? c.printing : "Normal", userPrinting: false, condition: "NM",
+        graded: !!c.graded, grade: c.grade || "", kind: c.kind === "sealed" ? "sealed" : "single",
+        language: c.language || "English", confidence: c.confidence || "medium",
+        qty: "1", cost: "", market: null, state: "idle", image: null, tcgId: null, series: "",
+      }));
+      if (!found.length) setErr("No cards found in that photo. Try closer, flatter, and with less glare.");
+      setRows((rs) => [...rs, ...found]);
+      setBusy(false);
+      for (const r of found) await price(r);
+    } catch (ex) { setErr(scanErr(ex)); setBusy(false); }
+  };
+
+  const card = (r) => ({ market: r.market || 0, condition: r.condition, graded: r.graded, border: borderOf(r.series) });
+  const valueRow = (r) => (r.market ? valueOf(card(r), mult) : 0);
+  const units = sum(rows, (r) => Math.max(1, Math.round(num(r.qty) || 1)));
+  const lotBase = sum(rows, (r) => valueRow(r) * Math.max(1, Math.round(num(r.qty) || 1)));
+  const lot = num(lotTotal) > 0;
+  const unitCostOf = (r) => lot ? (lotBase > 0 ? (num(lotTotal) * valueRow(r)) / lotBase : num(lotTotal) / Math.max(1, units)) : num(r.cost);
+  const costTotal = sum(rows, (r) => Math.round(unitCostOf(r) * 100) / 100 * Math.max(1, Math.round(num(r.qty) || 1)));
+  const have = (r) => sum(db.cards.filter((c) => c.qty > 0 && ((r.tcgId && c.tcgId === r.tcgId) ||
+    (slug(c.name) === slug(r.name) && r.number && normNum(c.number) === normNum(r.number)))), (c) => c.qty);
+  const pricing = rows.some((r) => r.state === "loading" || r.state === "idle");
+
+  const confirm = () => onConfirm(rows.filter((r) => r.name.trim()).map((r) => ({
+    qty: Math.max(1, Math.round(num(r.qty) || 1)),
+    unitCost: Math.round(unitCostOf(r) * 100) / 100,
+    data: { name: r.name.trim(), set: r.set, number: r.number, printing: r.printing, condition: r.condition, kind: r.kind,
+      graded: r.graded, market: r.market || 0, tcgId: r.tcgId, series: r.series },
+  })), pay);
+
+  return (
+    <Sheet title={mode === "add" ? "Scan to add" : "Price check"} onClose={onClose}>
+      <input ref={camRef} type="file" accept="image/*" capture="environment" onChange={handleFile} className="hidden" />
+      <input ref={libRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+      <div className="flex gap-2 mb-3">
+        {[["add", "Add to stock"], ["check", "Price check"]].map(([k, l]) => (
+          <button key={k} onClick={() => setMode(k)} className="flex-1 py-2.5 rounded-lg text-xs font-semibold"
+            style={{ background: mode === k ? C.surface2 : "transparent", color: mode === k ? C.text : C.muted, border: `1px solid ${C.line}` }}>{l}</button>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <button onClick={() => camRef.current?.click()} disabled={busy} className="rounded-xl py-4 flex items-center justify-center gap-2 font-semibold"
+          style={{ background: C.purple, color: "#fff", opacity: busy ? 0.5 : 1 }}><Camera size={18} /> {rows.length ? "Scan more" : "Take photo"}</button>
+        <button onClick={() => libRef.current?.click()} disabled={busy} className="rounded-xl py-4 flex items-center justify-center gap-2 font-semibold"
+          style={{ background: C.surface2, color: C.text, border: `1px solid ${C.line}`, opacity: busy ? 0.5 : 1 }}><ImageIcon size={18} /> From photos</button>
+      </div>
+      {!rows.length && !busy && <div className="text-xs mb-3 px-1 leading-relaxed" style={{ color: C.muted }}>
+        One card or a whole binder page per photo. Lay cards flat, fill the frame, and tilt away from lights to cut glare.
+        Every card gets a market price you can check and fix before anything is saved.
+      </div>}
+      {busy && <div className="rounded-xl py-6 mb-3 flex flex-col items-center gap-2" style={{ background: C.surface2 }}>
+        <Loader2 className="animate-spin" size={22} color={C.teal} /><div className="text-sm" style={{ color: C.muted }}>Reading cards</div></div>}
+      {err && <div className="rounded-xl p-3 mb-3 text-sm flex gap-2" style={{ background: "rgba(244,114,106,0.12)", color: C.loss }}>
+        <AlertTriangle size={16} className="shrink-0 mt-0.5" />{err}</div>}
+
+      <div className="space-y-2 mb-3">
+        {rows.map((r) => <ScanRow key={r.id} r={r} mode={mode} mult={mult} have={have(r)} unitCost={unitCostOf(r)} lot={lot}
+          onSet={(p) => setRow(r.id, p)} onDrop={() => dropRow(r.id)} onReprice={(p) => price({ ...r, ...p })} />)}
+      </div>
+
+      {rows.length > 0 && <div className="rounded-xl p-3.5 mb-3" style={{ background: C.surface2 }}>
+        <div className="flex justify-between text-sm"><span style={{ color: C.muted }}>{units} card{units === 1 ? "" : "s"} at market</span>
+          <span className="font-mono font-semibold" style={{ color: C.purple }}>{money(lotBase)}</span></div>
+        {mode === "add" && <div className="flex justify-between text-sm mt-1.5"><span style={{ color: C.muted }}>Your cost</span>
+          <span className="font-mono font-semibold">{money(costTotal)}</span></div>}
+      </div>}
+
+      {mode === "add" && rows.length > 0 && <>
+        <Field label="Paid one price for the whole lot? Enter it here and it's split by market value" value={lotTotal}
+          onChange={(e) => setLotTotal(e.target.value)} inputMode="decimal" placeholder="0.00" />
+        <button onClick={() => setPay(!pay)} className="w-full flex items-center gap-3 rounded-lg p-3 mb-4" style={{ background: C.surface2 }}>
+          <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ background: pay ? C.teal : "transparent", border: `1px solid ${pay ? C.teal : C.line}` }}>
+            {pay && <Check size={15} color={C.ink} />}</div>
+          <span className="text-sm text-left">Paid with business cash ({money(costTotal)} out)</span>
+        </button>
+        <BigBtn onClick={confirm} disabled={pricing || !rows.some((r) => r.name.trim())} bg={C.purple} fg="#fff">
+          {pricing ? <><Loader2 size={18} className="animate-spin" /> Checking prices</> : <><Plus size={18} /> Add {units} to stock</>}
+        </BigBtn>
+      </>}
+      {mode === "check" && rows.length > 0 && <button onClick={() => { setRows([]); setErr(""); }} className="w-full py-3 text-sm" style={{ color: C.muted }}>Clear and check another</button>}
+    </Sheet>
+  );
+}
+
+function ScanRow({ r, mode, mult, have, unitCost, lot, onSet, onDrop, onReprice }) {
+  const [edit, setEdit] = useState(false);
+  const card = { market: r.market || 0, condition: r.condition, graded: r.graded, border: borderOf(r.series) };
+  const v = r.market ? valueOf(card, mult) : 0;
+  const tag = r.market && carriesSticker(card, mult) ? stickerFor(card, mult) : null;
+  const zone = r.market ? zoneFor(card, mult) : null;
+  const warn = r.state === "miss" || r.confidence === "low";
+  const notes = [
+    r.confidence === "low" && "Hard to read, double check it",
+    r.graded && "Price shown is for a raw copy",
+    r.language && r.language !== "English" && "Price shown is for the English card",
+    r.kind === "sealed" && "Sealed product: enter the price by hand",
+  ].filter(Boolean);
+  return (
+    <div className="rounded-xl p-3" style={{ background: C.surface, border: `1px solid ${warn ? "rgba(240,184,73,0.45)" : C.line}` }}>
+      <div className="flex gap-3 mb-2">
+        {r.image ? <img src={r.image} alt="" className="w-14 rounded-md shrink-0 self-start" style={{ aspectRatio: "63/88", objectFit: "cover" }} />
+          : <div className="w-14 rounded-md shrink-0 flex items-center justify-center self-start" style={{ aspectRatio: "63/88", background: C.surface2 }}>
+              {r.state === "loading" ? <Loader2 size={16} className="animate-spin" color={C.muted} /> : <ImageIcon size={16} color={C.muted} />}</div>}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold truncate">{r.name || "Unknown card"}</div>
+              <div className="text-xs truncate" style={{ color: C.muted }}>
+                {r.set || "set unknown"}{r.number ? ` · #${r.number}` : ""}{r.graded ? ` · ${r.grade || "graded"}` : ""}
+              </div>
+            </div>
+            <button onClick={onDrop} className="p-1.5 rounded-lg shrink-0" style={{ background: C.surface2 }}><X size={14} color={C.muted} /></button>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1.5">
+            {r.state === "loading" || r.state === "idle" ? <span className="text-xs" style={{ color: C.muted }}>Checking price…</span>
+              : r.market ? <>
+                  <span className="font-mono text-sm font-semibold" style={{ color: C.purple }}>{money(v)}</span>
+                  <span className="text-xs" style={{ color: C.muted }}>{ZONES[zone].short}</span>
+                  <span className="font-mono text-xs ml-auto" style={{ color: C.gold }}>{tag != null ? `tag $${tag}` : "no tag"}</span>
+                </>
+              : <span className="text-xs" style={{ color: C.gold }}>No price match. Check the name and number.</span>}
+          </div>
+          {mode === "check" && have > 0 && <div className="text-xs mt-1" style={{ color: C.teal }}>{have} already in stock</div>}
+          {notes.length > 0 && <div className="text-xs mt-1" style={{ color: C.gold }}>{notes.join(" · ")}</div>}
+        </div>
+      </div>
+      <Chips options={PRINTINGS} value={r.printing} onChange={(k) => { onSet({ printing: k, userPrinting: true }); onReprice({ printing: k, userPrinting: true }); }} tint={C.purple} />
+      {mode === "add" && <>
+        <Chips options={CONDITIONS} value={r.condition} onChange={(k) => onSet({ condition: k })} tint={C.purple} />
+        <div className="flex gap-2 items-center">
+          <input value={r.qty} onChange={(e) => onSet({ qty: e.target.value })} inputMode="numeric" className={`w-14 text-center font-mono ${inputCls}`} style={inputSty} />
+          {lot ? <div className="flex-1 text-xs font-mono" style={{ color: C.muted }}>cost {money(unitCost)} each (from lot)</div>
+            : <input value={r.cost} onChange={(e) => onSet({ cost: e.target.value })} inputMode="decimal" placeholder="cost each" className={`flex-1 font-mono ${inputCls}`} style={inputSty} />}
+          {r.kind === "sealed" && <input value={r.market || ""} onChange={(e) => onSet({ market: num(e.target.value) || null, state: "done" })} inputMode="decimal" placeholder="market" className={`w-24 font-mono ${inputCls}`} style={inputSty} />}
+        </div>
+      </>}
+      <button onClick={() => setEdit(!edit)} className="text-xs mt-2" style={{ color: C.muted }}>{edit ? "Close" : "Wrong card? Edit it"}</button>
+      {edit && <div className="mt-2 space-y-2">
+        <input value={r.name} onChange={(e) => onSet({ name: e.target.value })} placeholder="Card name" className={`w-full ${inputCls}`} style={inputSty} />
+        <div className="flex gap-2">
+          <input value={r.set} onChange={(e) => onSet({ set: e.target.value })} placeholder="Set" className={`flex-1 ${inputCls}`} style={inputSty} />
+          <input value={r.number} onChange={(e) => onSet({ number: e.target.value })} placeholder="Number" className={`w-28 font-mono ${inputCls}`} style={inputSty} />
+        </div>
+        <button onClick={() => { onReprice({}); setEdit(false); }} className="w-full rounded-lg py-2.5 text-xs font-semibold" style={{ background: C.surface2, color: C.gold }}>Look it up again</button>
+      </div>}
+    </div>
   );
 }
 
