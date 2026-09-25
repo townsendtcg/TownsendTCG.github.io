@@ -49,7 +49,7 @@ This photo is from a trade or sale at the table. Also estimate the total US doll
 
 // Tried in order. Full Flash first for accuracy, Lite models as backup when Google is busy.
 const modelList = (env) =>
-  String(env.GEMINI_MODELS || env.GEMINI_MODEL || "gemini-flash-latest,gemini-2.5-flash,gemini-flash-lite-latest,gemini-2.5-flash-lite")
+  String(env.GEMINI_MODELS || env.GEMINI_MODEL || "gemini-flash-latest,gemini-3.5-flash,gemini-flash-lite-latest,gemini-3.5-flash-lite")
     .split(",").map((s) => s.trim()).filter(Boolean);
 
 const json = (obj, status, headers) =>
