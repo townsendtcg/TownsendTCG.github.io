@@ -33,7 +33,7 @@
   "url": "https://townsendtcg.com/",
   "description": "Trading card show vendor from Saint Augustine, Florida. Singles, slabs, trades and a $1 binder.",
   "address": { "@type": "PostalAddress", "addressLocality": "Saint Augustine", "addressRegion": "FL", "addressCountry": "US" },
-  "sameAs": ["https://instagram.com/townsend_tcg", "https://www.tiktok.com/@townsend_tcg", "https://www.youtube.com/@townsend_tcg", "https://www.facebook.com/61590616964245/", "https://www.whatnot.com/user/townsend_tcg"]
+  "sameAs": ["https://instagram.com/townsend_tcg", "https://www.tiktok.com/@townsend_tcg", "https://www.youtube.com/@townsend_tcg", "https://www.facebook.com/61590616964245/", "https://www.threads.com/@townsend_tcg", "https://www.whatnot.com/user/townsend_tcg"]
 }
 </script>
 
@@ -551,6 +551,7 @@ img { display: block; max-width: 100%; }
 /* ---- Free card ---- */
 .free-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 32px; }
 .free-actions .btn { padding: 0 12px; min-width: 0; gap: 8px; }
+.free-actions .btn:nth-child(5) { grid-column: 1 / -1; }
 .fine { display: block; margin-top: 18px; font-size: 14px; color: var(--muted-d); }
 
 /* ---- Shows ---- */
@@ -671,7 +672,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
   .tile-wide { grid-column: auto; }
   .tile-wide .tile-media { aspect-ratio: 4 / 5; }
   .art-page { width: 80%; aspect-ratio: 8.5 / 11; }
-  .free-actions { display: flex; }
+  .free-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; max-width: 460px; }
 }
 
 @media (min-width: 960px) {
@@ -767,7 +768,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
         <section class="free-top" id="free" aria-labelledby="free-title">
           <div>
             <h2 id="free-title" class="free-title"><span class="ln">Follow us.</span><span class="ln grad-text">Get a free card.</span></h2>
-            <p class="free-copy">Follow us on Instagram, TikTok, YouTube or Facebook, show us at the table, and pick any card from the $1 binder.</p>
+            <p class="free-copy">Follow us on Instagram, TikTok, YouTube, Facebook or Threads, show us at the table, and pick any card from the $1 binder.</p>
           </div>
           <div class="free-actions">
             <a class="btn btn-paper" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener" aria-label="Follow Townsend TCG on Instagram">
@@ -785,6 +786,10 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
             <a class="btn btn-paper" href="https://www.facebook.com/61590616964245/" target="_blank" rel="noopener" aria-label="Follow Townsend TCG on Facebook">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H7.8v3h2.6V21h3.1z"/></svg>
               Facebook
+            </a>
+            <a class="btn btn-paper" href="https://www.threads.com/@townsend_tcg" target="_blank" rel="noopener" aria-label="Follow Townsend TCG on Threads">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>
+              Threads
             </a>
           </div>
           <small class="fine">One free card per person. Already following? Show us anyway and say hi.</small>
@@ -925,6 +930,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
         <li><a href="https://www.tiktok.com/@townsend_tcg" target="_blank" rel="noopener">TikTok</a></li>
         <li><a href="https://www.youtube.com/@townsend_tcg" target="_blank" rel="noopener">YouTube</a></li>
         <li><a href="https://www.facebook.com/61590616964245/" target="_blank" rel="noopener">Facebook</a></li>
+        <li><a href="https://www.threads.com/@townsend_tcg" target="_blank" rel="noopener">Threads</a></li>
         <li><a href="https://app.getcollectr.com/showcase/profile/1610621e-dfd1-42ae-b30f-a6e79202c156" target="_blank" rel="noopener">Inventory</a></li>
       </ul>
       <div class="foot-copy">
