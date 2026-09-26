@@ -1,9 +1,9 @@
 // Townsend TCG card scanner relay (Cloudflare Worker)
-// Keeps the Gemini key off the public site. Only townsendtcg.github.io may call it.
+// Keeps the Gemini key off the public site. Only the Townsend TCG site origins may call it.
 // Needs a secret named GEMINI_API_KEY (Settings > Variables and Secrets).
 // Optional plain variable GEMINI_MODELS (comma separated, tried in order) to change models later.
 
-const ALLOWED = ["https://townsendtcg.github.io"];
+const ALLOWED = ["https://townsendtcg.github.io", "https://townsendtcg.com", "https://www.townsendtcg.com"];
 
 const SCHEMA = {
   type: "OBJECT",
@@ -78,7 +78,7 @@ export default {
         const path = u.searchParams.get("csv") || "";
         if (!/^tcgplayer\/3\/(groups|\d+\/(products|prices))$/.test(path)) return json({ error: "bad path" }, 400, cors);
         const r = await fetch(`https://tcgcsv.com/${path}`, {
-          headers: { "User-Agent": "TownsendTCG-BoothBook/1.0 (townsendtcg.github.io)" },
+          headers: { "User-Agent": "TownsendTCG-BoothBook/1.0 (townsendtcg.com)" },
           cf: { cacheTtl: 21600, cacheEverything: true },
         });
         return new Response(r.body, { status: r.status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "public, max-age=21600" } });
