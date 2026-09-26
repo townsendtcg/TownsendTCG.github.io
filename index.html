@@ -550,8 +550,7 @@ img { display: block; max-width: 100%; }
 
 /* ---- Free card ---- */
 .free-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 32px; }
-.free-actions .btn { padding: 0 18px; }
-.free-actions .btn:nth-child(3) { grid-column: 1 / -1; }
+.free-actions .btn { padding: 0 12px; min-width: 0; gap: 8px; }
 .fine { display: block; margin-top: 18px; font-size: 14px; color: var(--muted-d); }
 
 /* ---- Shows ---- */
@@ -768,7 +767,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
         <section class="free-top" id="free" aria-labelledby="free-title">
           <div>
             <h2 id="free-title" class="free-title"><span class="ln">Follow us.</span><span class="ln grad-text">Get a free card.</span></h2>
-            <p class="free-copy">Follow @townsend_tcg on Instagram, TikTok or YouTube, show us at the table, and pick any card from the $1 binder.</p>
+            <p class="free-copy">Follow us on Instagram, TikTok, YouTube or Facebook, show us at the table, and pick any card from the $1 binder.</p>
           </div>
           <div class="free-actions">
             <a class="btn btn-paper" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener" aria-label="Follow Townsend TCG on Instagram">
@@ -782,6 +781,10 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
             <a class="btn btn-paper" href="https://www.youtube.com/@townsend_tcg" target="_blank" rel="noopener" aria-label="Subscribe to Townsend TCG on YouTube">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.6 2.6 0 0 0-1.8 1.8A27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8zM10 15V9l5.2 3z"/></svg>
               YouTube
+            </a>
+            <a class="btn btn-paper" href="https://www.facebook.com/61590616964245/" target="_blank" rel="noopener" aria-label="Follow Townsend TCG on Facebook">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H7.8v3h2.6V21h3.1z"/></svg>
+              Facebook
             </a>
           </div>
           <small class="fine">One free card per person. Already following? Show us anyway and say hi.</small>
@@ -952,6 +955,10 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
     <a class="btn btn-paper" data-follow href="https://www.youtube.com/@townsend_tcg" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.6 2.6 0 0 0-1.8 1.8A27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8zM10 15V9l5.2 3z"/></svg>
       Subscribe on YouTube
+    </a>
+    <a class="btn btn-paper" data-follow href="https://www.facebook.com/61590616964245/" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H7.8v3h2.6V21h3.1z"/></svg>
+      Follow on Facebook
     </a>
   </div>
   <button class="sheet-skip" type="button" id="sheet-skip">Skip to payment</button>
