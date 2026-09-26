@@ -551,7 +551,12 @@ img { display: block; max-width: 100%; }
 /* ---- Free card ---- */
 .free-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 32px; }
 .free-actions .btn { padding: 0 12px; min-width: 0; gap: 8px; }
-.free-actions .btn:nth-child(5) { grid-column: 1 / -1; }
+.free-actions .btn:nth-child(3) { grid-column: 1 / -1; }
+.free-more { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 2px; font-size: 13px; color: var(--muted-d); }
+.pill { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13.5px; font-weight: 600; color: var(--on-d); text-decoration: none; box-shadow: inset 0 0 0 1px var(--rule-d); transition: box-shadow .2s, background .2s; }
+.pill:hover { background: var(--ink-2); box-shadow: inset 0 0 0 1px var(--foil); }
+.pill svg { width: 15px; height: 15px; flex: none; }
+.sheet-more { justify-content: center; margin-top: 4px; }
 .fine { display: block; margin-top: 18px; font-size: 14px; color: var(--muted-d); }
 
 /* ---- Shows ---- */
@@ -673,6 +678,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
   .tile-wide .tile-media { aspect-ratio: 4 / 5; }
   .art-page { width: 80%; aspect-ratio: 8.5 / 11; }
   .free-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; max-width: 460px; }
+  .free-more { flex-basis: 100%; justify-content: flex-end; }
 }
 
 @media (min-width: 960px) {
@@ -768,7 +774,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
         <section class="free-top" id="free" aria-labelledby="free-title">
           <div>
             <h2 id="free-title" class="free-title"><span class="ln">Follow us.</span><span class="ln grad-text">Get a free card.</span></h2>
-            <p class="free-copy">Follow us on Instagram, TikTok, YouTube, Facebook or Threads, show us at the table, and pick any card from the $1 binder.</p>
+            <p class="free-copy">Follow @townsend_tcg on Instagram, TikTok or YouTube, show us at the table, and pick any card from the $1 binder.</p>
           </div>
           <div class="free-actions">
             <a class="btn btn-paper" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener" aria-label="Follow Townsend TCG on Instagram">
@@ -783,14 +789,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.6 2.6 0 0 0-1.8 1.8A27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8zM10 15V9l5.2 3z"/></svg>
               YouTube
             </a>
-            <a class="btn btn-paper" href="https://www.facebook.com/61590616964245/" target="_blank" rel="noopener" aria-label="Follow Townsend TCG on Facebook">
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H7.8v3h2.6V21h3.1z"/></svg>
-              Facebook
-            </a>
-            <a class="btn btn-paper" href="https://www.threads.com/@townsend_tcg" target="_blank" rel="noopener" aria-label="Follow Townsend TCG on Threads">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>
-              Threads
-            </a>
+            <div class="free-more"><span>Also on</span><a class="pill" href="https://www.facebook.com/61590616964245/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H7.8v3h2.6V21h3.1z"/></svg>Facebook</a><a class="pill" href="https://www.threads.com/@townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>Threads</a></div>
           </div>
           <small class="fine">One free card per person. Already following? Show us anyway and say hi.</small>
         </section>
@@ -962,10 +961,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.6 2.6 0 0 0-1.8 1.8A27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8zM10 15V9l5.2 3z"/></svg>
       Subscribe on YouTube
     </a>
-    <a class="btn btn-paper" data-follow href="https://www.facebook.com/61590616964245/" target="_blank" rel="noopener">
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H7.8v3h2.6V21h3.1z"/></svg>
-      Follow on Facebook
-    </a>
+    <div class="free-more sheet-more"><span>Also on</span><a class="pill" href="https://www.facebook.com/61590616964245/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H7.8v3h2.6V21h3.1z"/></svg>Facebook</a><a class="pill" href="https://www.threads.com/@townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>Threads</a></div>
   </div>
   <button class="sheet-skip" type="button" id="sheet-skip">Skip to payment</button>
   <p class="sheet-fine">One free card per person.</p>
