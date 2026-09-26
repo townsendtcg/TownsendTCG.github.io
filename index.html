@@ -33,7 +33,7 @@
   "url": "https://townsendtcg.com/",
   "description": "Trading card show vendor from Saint Augustine, Florida. Singles, slabs, trades and a $1 binder.",
   "address": { "@type": "PostalAddress", "addressLocality": "Saint Augustine", "addressRegion": "FL", "addressCountry": "US" },
-  "sameAs": ["https://instagram.com/townsend_tcg", "https://www.tiktok.com/@townsend_tcg"]
+  "sameAs": ["https://instagram.com/townsend_tcg", "https://www.tiktok.com/@townsend_tcg", "https://www.youtube.com/@townsend_tcg"]
 }
 </script>
 
@@ -551,6 +551,7 @@ img { display: block; max-width: 100%; }
 /* ---- Free card ---- */
 .free-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 32px; }
 .free-actions .btn { padding: 0 18px; }
+.free-actions .btn:nth-child(3) { grid-column: 1 / -1; }
 .fine { display: block; margin-top: 18px; font-size: 14px; color: var(--muted-d); }
 
 /* ---- Shows ---- */
@@ -767,7 +768,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
         <section class="free-top" id="free" aria-labelledby="free-title">
           <div>
             <h2 id="free-title" class="free-title"><span class="ln">Follow us.</span><span class="ln grad-text">Get a free card.</span></h2>
-            <p class="free-copy">Follow @townsend_tcg on Instagram or TikTok, show us at the table, and pick any card from the $1 binder.</p>
+            <p class="free-copy">Follow @townsend_tcg on Instagram, TikTok or YouTube, show us at the table, and pick any card from the $1 binder.</p>
           </div>
           <div class="free-actions">
             <a class="btn btn-paper" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener" aria-label="Follow Townsend TCG on Instagram">
@@ -777,6 +778,10 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
             <a class="btn btn-paper" href="https://www.tiktok.com/@townsend_tcg" target="_blank" rel="noopener" aria-label="Follow Townsend TCG on TikTok">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 3c.4 2.3 1.9 3.8 4.1 4v3.1c-1.5 0-2.9-.4-4.1-1.2v6.3c0 3.4-2.7 5.8-5.9 5.8S5 18.6 5 15.4c0-3.3 2.8-6 6.3-5.7v3.2c-1.5-.3-3.1.9-3.1 2.5 0 1.4 1.1 2.6 2.6 2.6s2.6-1.1 2.6-2.8V3h3.2z"/></svg>
               TikTok
+            </a>
+            <a class="btn btn-paper" href="https://www.youtube.com/@townsend_tcg" target="_blank" rel="noopener" aria-label="Subscribe to Townsend TCG on YouTube">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.6 2.6 0 0 0-1.8 1.8A27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8zM10 15V9l5.2 3z"/></svg>
+              YouTube
             </a>
           </div>
           <small class="fine">One free card per person. Already following? Show us anyway and say hi.</small>
@@ -915,6 +920,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
       <ul class="foot-links" role="list">
         <li><a href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener">Instagram</a></li>
         <li><a href="https://www.tiktok.com/@townsend_tcg" target="_blank" rel="noopener">TikTok</a></li>
+        <li><a href="https://www.youtube.com/@townsend_tcg" target="_blank" rel="noopener">YouTube</a></li>
         <li><a href="https://app.getcollectr.com/showcase/profile/1610621e-dfd1-42ae-b30f-a6e79202c156" target="_blank" rel="noopener">Inventory</a></li>
       </ul>
       <div class="foot-copy">
@@ -941,6 +947,10 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
     <a class="btn btn-paper" data-follow href="https://www.tiktok.com/@townsend_tcg" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 3c.4 2.3 1.9 3.8 4.1 4v3.1c-1.5 0-2.9-.4-4.1-1.2v6.3c0 3.4-2.7 5.8-5.9 5.8S5 18.6 5 15.4c0-3.3 2.8-6 6.3-5.7v3.2c-1.5-.3-3.1.9-3.1 2.5 0 1.4 1.1 2.6 2.6 2.6s2.6-1.1 2.6-2.8V3h3.2z"/></svg>
       Follow on TikTok
+    </a>
+    <a class="btn btn-paper" data-follow href="https://www.youtube.com/@townsend_tcg" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.6 2.6 0 0 0-1.8 1.8A27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8zM10 15V9l5.2 3z"/></svg>
+      Subscribe on YouTube
     </a>
   </div>
   <button class="sheet-skip" type="button" id="sheet-skip">Skip to payment</button>
