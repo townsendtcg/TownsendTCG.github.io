@@ -85,6 +85,11 @@ async function exportBook() {
   for (const k of all) if (typeof k === "string") out[k] = await get(k);
   return JSON.stringify(out, null, 2);
 }
+async function restoreBook(text) {
+  const data = JSON.parse(text);
+  if (!data || typeof data !== "object" || !Object.keys(data).some((k) => k.includes("boothbook"))) throw new Error("That file doesn't look like a Booth Book backup.");
+  for (const k of Object.keys(data)) await set(k, data[k]);
+}
 
 /* =========================== PIN GATE =========================== */
 const PIN_CODE = "0921"; // change me — see the comment at the top of this file
@@ -654,6 +659,13 @@ function BoothBook() {
     flash("Backup downloaded");
   };
 
+  const doRestore = async (file) => {
+    if (!file) return;
+    if (!window.confirm("Replace everything on this phone with this backup? This can't be undone.")) return;
+    try { await restoreBook(await file.text()); loaded.current = false; window.location.reload(); }
+    catch (e) { flash(e.message || "Couldn't read that backup"); }
+  };
+
   const publicCatalog = () => {
     const live = db.cards.filter((c) => c.qty > 0 && !c.graded && carriesSticker(c, mult));
     return live.map((c) => ({
@@ -675,7 +687,7 @@ function BoothBook() {
 
   return (
     <div className="min-h-screen pb-32" style={{ background: C.ink, color: C.text, fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
-      <Header m={m} show={activeShow} alerts={attention.total} onExportBook={doExportBook} onExportCatalog={doExportCatalog} compact={tab !== "attention" && tab !== "stats"} lastBackup={db.lastBackup} />
+      <Header m={m} show={activeShow} alerts={attention.total} onExportBook={doExportBook} onExportCatalog={doExportCatalog} onRestore={doRestore} compact={tab !== "attention" && tab !== "stats"} lastBackup={db.lastBackup} />
       <div className="px-4 mt-4">
         {tab === "attention" && <AttentionTab db={db} setDb={setDb} a={attention} mult={mult} flash={flash} onBackup={doExportBook}
           onConfirmSticker={confirmSticker} onConfirmZone={confirmZone} onConfirmAll={confirmAllStickers} onSnooze={snooze} onOpen={(c) => setSheet({ kind: "card", payload: c })} />}
@@ -701,8 +713,9 @@ function BoothBook() {
 }
 
 /* ============================ HEADER ============================ */
-function Header({ m, show, alerts, onExportBook, onExportCatalog, compact, lastBackup }) {
+function Header({ m, show, alerts, onExportBook, onExportCatalog, onRestore, compact, lastBackup }) {
   const [menu, setMenu] = useState(false);
+  const restoreRef = useRef(null);
   const since = daysSince(lastBackup);
   const chip = show
     ? <div className="flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(58,217,196,0.14)", color: C.teal }}>
@@ -720,6 +733,8 @@ function Header({ m, show, alerts, onExportBook, onExportCatalog, compact, lastB
       </div>
       <button onClick={() => { onExportBook(); setMenu(false); }} className="w-full text-left text-sm rounded-lg py-3 px-3" style={{ background: C.surface, color: C.text }}>Download full backup (private)</button>
       <button onClick={() => { onExportCatalog(); setMenu(false); }} className="w-full text-left text-sm rounded-lg py-3 px-3" style={{ background: C.surface, color: C.text }}>Download catalog.json for the shop (no cost data)</button>
+      <button onClick={() => restoreRef.current?.click()} className="w-full text-left text-sm rounded-lg py-3 px-3" style={{ background: C.surface, color: C.text }}>Restore from a backup file</button>
+      <input ref={restoreRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; setMenu(false); onRestore(f); }} />
     </div>
   );
   if (compact) return (
