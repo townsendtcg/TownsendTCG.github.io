@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Townsend TCG | Florida Trading Card Show Vendor</title>
-<meta name="description" content="Townsend TCG is a trading card show vendor from Saint Augustine, Florida. Singles, slabs, trades and a $1 binder. Pay at the table by card, Venmo, Cash App, PayPal or Zelle.">
+<meta name="description" content="Townsend TCG is a trading card show vendor from Saint Augustine, Florida. Singles, slabs, trades and a $1 binder. Pay at the table by card, Venmo, Cash App or Zelle.">
 <link rel="canonical" href="https://townsendtcg.com/">
 <meta name="theme-color" content="#111226">
 <meta name="color-scheme" content="dark">
@@ -283,6 +283,7 @@ img { display: block; max-width: 100%; }
 .pay-alt { font-size: 14px; color: var(--muted-d); margin: 4px 2px 0; }
 
 .apps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.apps .app:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .app {
   display: flex; align-items: center; gap: 10px;
   width: 100%; min-height: 70px;
@@ -307,7 +308,6 @@ img { display: block; max-width: 100%; }
 .glyph svg { width: 18px; height: 18px; }
 .g-venmo { background: #008cff; }
 .g-cash { background: #00b93e; }
-.g-paypal { background: #003087; }
 .g-zelle { background: #6d1ed4; transition: background-color .3s var(--ease); }
 .app-text { min-width: 0; }
 .app-name { display: block; font-size: 16.5px; font-weight: 600; line-height: 1.2; }
@@ -837,10 +837,6 @@ main::before{content:"";position:absolute;z-index:-1;pointer-events:none;
               <span class="glyph g-cash" aria-hidden="true">$</span>
               <span class="app-text"><span class="app-name">Cash App</span><span class="app-id">$Atowns08</span></span>
             </a>
-            <a class="app" href="https://www.paypal.com/qrcodes/p2pqrc/BRRCT7ZUHLJWG" target="_blank" rel="noopener" aria-label="Pay with PayPal, Austin Townsend">
-              <span class="glyph g-paypal" aria-hidden="true">P</span>
-              <span class="app-text"><span class="app-name">PayPal</span><span class="app-id">Austin Townsend</span></span>
-            </a>
             <a class="app" href="https://enroll.zellepay.com/qr-codes?data=eyJuYW1lIjoiQXVzdGluIiwidG9rZW4iOiI4MDE4NDIzMzMxIn0=" target="_blank" rel="noopener" aria-label="Pay with Zelle, Austin Townsend, 801 842 3331">
               <span class="glyph g-zelle" aria-hidden="true"><span class="g-letter">Z</span></span>
               <span class="app-text"><span class="app-name">Zelle</span><span class="app-id">(801) 842-3331</span></span>
@@ -976,7 +972,7 @@ main::before{content:"";position:absolute;z-index:-1;pointer-events:none;
 </div>
 
 <a class="sticky-pay" id="sticky-pay" href="#pay">
-  <span>Pay<span class="methods">Card, Venmo, Cash App, PayPal, Zelle</span></span>
+  <span>Pay<span class="methods">Card, Venmo, Cash App, Zelle</span></span>
   <span class="pay-arrow" aria-hidden="true">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
   </span>
