@@ -206,6 +206,22 @@ img { display: block; max-width: 100%; }
 .ask a { color: var(--foil); font-weight: 600; }
 @media (min-width: 960px) { .ask { display: none; } }
 
+/* Whatnot invite banner */
+.wn-wrap { padding-top: 2px; padding-bottom: 12px; }
+.wn {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 12px 16px; border-radius: 16px; text-decoration: none; color: var(--on-d);
+  background: var(--ink-2); box-shadow: inset 0 0 0 1px var(--rule-d);
+  transition: background .2s, box-shadow .2s;
+}
+.wn:hover { background: var(--ink-3); box-shadow: inset 0 0 0 1px var(--foil); }
+.wn-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wn-text strong { font-size: 15px; font-weight: 700; color: var(--foil); }
+.wn-sub { font-size: 14px; opacity: .85; }
+.wn-cta { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.wn-cta svg { width: 16px; height: 16px; }
+
+
 /* =========================================================
    Hero / Pay
    ========================================================= */
@@ -776,6 +792,12 @@ main::before{content:"";position:absolute;z-index:-1;pointer-events:none;
     </a>
   </div>
   <p class="wrap ask">Looking for something specific? <a href="https://ig.me/m/townsend_tcg" target="_blank" rel="noopener">Message me on Instagram</a> and I'll hunt it down.</p>
+  <div class="wrap wn-wrap">
+    <a class="wn" href="https://whatnot.com/invite/townsend_tcg" target="_blank" rel="noopener" aria-label="Join Townsend TCG on Whatnot and get $25 to spend">
+      <span class="wn-text"><strong>Live on Whatnot</strong><span class="wn-sub">New to Whatnot? Sign up with our link and get $25 to spend.</span></span>
+      <span class="wn-cta" aria-hidden="true">Get $25 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+    </a>
+  </div>
 
   <main>
     <h1 class="sr-only">Townsend TCG, trading card show vendor from Saint Augustine, Florida</h1>
@@ -938,6 +960,7 @@ main::before{content:"";position:absolute;z-index:-1;pointer-events:none;
         <li><a href="https://www.youtube.com/@townsend_tcg" target="_blank" rel="noopener">YouTube</a></li>
         <li><a href="https://www.facebook.com/61590616964245/" target="_blank" rel="noopener">Facebook</a></li>
         <li><a href="https://www.threads.com/@townsend_tcg" target="_blank" rel="noopener">Threads</a></li>
+        <li><a href="https://whatnot.com/invite/townsend_tcg" target="_blank" rel="noopener">Whatnot</a></li>
         <li><a href="https://app.getcollectr.com/showcase/profile/1610621e-dfd1-42ae-b30f-a6e79202c156" target="_blank" rel="noopener">Inventory</a></li>
       </ul>
       <div class="foot-copy">
