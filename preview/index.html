@@ -255,9 +255,10 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 /* =========================================================
    Follow sheet: glass, spring-driven, drag to dismiss
    ========================================================= */
-.sheet-bd { position: fixed; inset: 0; z-index: 60; background: rgba(4,5,10,.5); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); opacity: 0; }
-.sheet { position: fixed; z-index: 61; left: 0; right: 0; bottom: 0; max-width: 520px; margin: 0 auto; max-height: calc(100% - 24px); overflow-y: auto; padding: 10px 22px calc(22px + var(--safe-b)); border-radius: 30px 30px 0 0; background: rgba(22,25,46,.86); -webkit-backdrop-filter: blur(28px) saturate(180%); backdrop-filter: blur(28px) saturate(180%); box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 -20px 60px -20px rgba(0,0,0,.8); transform: translate3d(0, 110%, 0); will-change: transform; overscroll-behavior: contain; }
+.sheet-bd { position: fixed; inset: 0; z-index: 60; background: rgba(4,5,10,.32); opacity: 0; }
+.sheet { position: fixed; z-index: 61; left: 0; right: 0; bottom: 0; max-width: 520px; margin: 0 auto; max-height: calc(100% - 24px); overflow-y: auto; padding: 10px 22px calc(22px + var(--safe-b)); border-radius: 30px 30px 0 0; background: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.05)), rgba(12,14,26,.38); -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), inset 0 1px 0 rgba(255,255,255,.22), 0 -20px 60px -20px rgba(0,0,0,.7); transform: translate3d(0, 110%, 0); will-change: transform; overscroll-behavior: contain; }
 .sheet:focus { outline: none; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .sheet { background: rgba(22,25,46,.95); } }
 .grab { position: relative; width: 38px; height: 5px; margin: 0 auto 18px; border-radius: 3px; background: rgba(255,255,255,.22); cursor: grab; }
 .grab::after { content: ""; position: absolute; inset: -16px -90px; }
 .sheet.drag-all, .grab, .sheet-top { touch-action: none; }
