@@ -770,6 +770,9 @@ main::before{content:"";position:absolute;z-index:-1;pointer-events:none;
  -webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent 100%);mask-image:radial-gradient(closest-side,#000 55%,transparent 100%)}
 @media (max-width:719px){main::before{top:150px;right:-40vw;width:120vw;opacity:.12}}
 
+/* Keep the background dragon from widening the page (stops iOS Safari zooming out past the edge) */
+html, body { overflow-x: hidden; }
+@supports (overflow: clip) { html, body { overflow-x: clip; } }
 .shop-sec { padding-top: 64px; padding-bottom: 24px; scroll-margin-top: 16px; }
 .shop-title { font-size: clamp(2.4rem, 9vw, 4.2rem); }
 .shop-lede { margin-top: 12px; font-size: 16px; color: #d4d7e3; }
