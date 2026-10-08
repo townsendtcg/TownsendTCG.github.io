@@ -74,6 +74,9 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .btn svg { width: 18px; height: 18px; flex: none; }
 .btn-primary { color: var(--on-paper); border: 2px solid transparent; background: linear-gradient(var(--paper), var(--paper)) padding-box, var(--grad) border-box; box-shadow: 0 10px 30px -14px rgba(111,159,219,.55); }
 .btn-primary:hover { background: linear-gradient(#fff, #fff) padding-box, var(--grad) border-box; }
+.btn-primary { color: #4a6fd6; }
+.gt, .btn-primary .txt b { background: var(--grad-deep); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+.btn-primary svg:last-child { color: #2a92b8; }
 .btn-glass { color: var(--ink); background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.03)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), inset 0 1px 0 rgba(255,255,255,.12); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); }
 .btn-glass:hover { background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.06)); }
 .btn-sm { min-height: 44px; padding: 0 18px; font-size: 15px; gap: 8px; }
@@ -310,7 +313,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
       <a href="#shop">Shop</a>
       <a href="#free">Free card</a>
     </nav>
-    <a class="btn btn-primary" href="#pay">Pay</a>
+    <a class="btn btn-primary" href="#pay"><span class="gt">Pay</span></a>
   </div>
 </header>
 
@@ -325,7 +328,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
       <h1 id="hero-title" class="h-xl"><span class="line" style="--i:0"><span>From my binder</span></span><span class="line" style="--i:1"><span class="grad">to yours.</span></span></h1>
       <p class="lede" data-r style="--i:3">Pokémon singles, slabs and a $1 binder at card shows across Florida. Found something at the table? Pay in seconds.</p>
       <div class="ctas" data-r style="--i:4">
-        <a class="btn btn-primary" href="#pay">Pay now <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a class="btn btn-primary" href="#pay"><span class="gt">Pay now</span> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         <a class="btn btn-glass" href="#shows">Show schedule</a>
       </div>
       <div class="stats" data-r style="--i:5">
@@ -367,7 +370,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
         <p class="lede" style="margin-top:18px;max-width:36ch;--i:2" data-r>Follow @townsend_tcg, show us at the table, and pick any card from the $1 binder.</p>
         <p class="proof-line" data-r style="--i:3">Join <b class="tnum" data-sp="f" data-count="936">936</b> followers · <b class="tnum" data-sp="v" data-count="1050429" data-fmt="compact">1.05M</b> video views</p>
         <div class="follow" data-r style="--i:4">
-          <a class="btn btn-primary" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>Instagram</a>
+          <a class="btn btn-primary" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg><span class="gt">Instagram</span></a>
           <a class="btn btn-glass" href="https://www.tiktok.com/@townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 3c.4 2.3 1.9 3.8 4.1 4v3.1c-1.5 0-2.9-.4-4.1-1.2v6.3c0 3.4-2.7 5.8-5.9 5.8S5 18.6 5 15.4c0-3.3 2.8-6 6.3-5.7v3.2c-1.5-.3-3.1.9-3.1 2.5 0 1.4 1.1 2.6 2.6 2.6s2.6-1.1 2.6-2.8V3h3.2z"/></svg>TikTok</a>
           <a class="btn btn-glass" href="https://www.youtube.com/@townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.6 2.6 0 0 0-1.8 1.8A27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8zM10 15V9l5.2 3z"/></svg>YouTube</a>
         </div>
@@ -458,7 +461,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   </div>
 </footer>
 
-<a class="sticky" id="sticky" href="#pay" aria-label="Pay: card, Venmo, Cash App, Zelle"><span>Pay<small>Card, Venmo, Cash App, Zelle</small></span><span class="pay-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span></a>
+<a class="sticky" id="sticky" href="#pay" aria-label="Pay: card, Venmo, Cash App, Zelle"><span><span class="gt">Pay</span><small>Card, Venmo, Cash App, Zelle</small></span><span class="pay-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span></a>
 
 <!-- Follow sheet: opens once per visit; skipped when the link ends in #pay (use that for a pay-only QR) -->
 <div class="sheet-bd" id="sheet-bd" hidden></div>
@@ -472,7 +475,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   <p class="copy" id="sheet-copy">Follow @townsend_tcg, show us at the table, and pick any card from the $1 binder on top of what you're buying.</p>
   <p class="proof">Join <b data-sp="f">936</b> followers · <b data-sp="v">1.05M</b> video views</p>
   <div class="sheet-actions">
-    <a class="btn btn-primary" data-follow href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>Follow on Instagram</a>
+    <a class="btn btn-primary" data-follow href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg><span class="gt">Follow on Instagram</span></a>
     <a class="btn btn-glass" data-follow href="https://www.tiktok.com/@townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 3c.4 2.3 1.9 3.8 4.1 4v3.1c-1.5 0-2.9-.4-4.1-1.2v6.3c0 3.4-2.7 5.8-5.9 5.8S5 18.6 5 15.4c0-3.3 2.8-6 6.3-5.7v3.2c-1.5-.3-3.1.9-3.1 2.5 0 1.4 1.1 2.6 2.6 2.6s2.6-1.1 2.6-2.8V3h3.2z"/></svg>Follow on TikTok</a>
     <a class="btn btn-glass" data-follow href="https://www.youtube.com/@townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.6 2.6 0 0 0-1.8 1.8A27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8zM10 15V9l5.2 3z"/></svg>Subscribe on YouTube</a>
   </div>
