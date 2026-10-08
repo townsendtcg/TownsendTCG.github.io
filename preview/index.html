@@ -118,7 +118,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .chip .dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 1.5px solid var(--teal); opacity: 0; animation: ping 2.4s var(--ease) infinite; }
 @keyframes ping { 0% { transform: scale(.6); opacity: .9; } 70%, 100% { transform: scale(1.8); opacity: 0; } }
 .chip .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hero h1 { margin-top: 20px; }
+.hero h1 { margin-top: 20px; font-size: clamp(38px, 12.2vw, 128px); }
 .hero .lede { margin-top: 18px; max-width: 30ch; color: #cfd2e2; }
 .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
 .ctas .btn { flex: 1 1 0; padding: 0 18px; }
