@@ -77,8 +77,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .btn-primary { color: #4a6fd6; }
 .gt, .btn-primary .txt b { background: var(--grad-deep); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
 .btn-primary svg:last-child { color: #2a92b8; }
-.btn-glass { color: var(--ink); background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.03)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), inset 0 1px 0 rgba(255,255,255,.12); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); }
-.btn-glass:hover { background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.06)); }
+.btn-glass { color: var(--ink); background: linear-gradient(180deg, rgba(255,255,255,.15), rgba(255,255,255,.07)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22), inset 0 1px 0 rgba(255,255,255,.18); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); }
+.btn-glass:hover { background: linear-gradient(180deg, rgba(255,255,255,.2), rgba(255,255,255,.1)); }
 .btn-sm { min-height: 44px; padding: 0 18px; font-size: 15px; gap: 8px; }
 .btn-sm svg { width: 16px; height: 16px; }
 .btn-block { display: flex; width: 100%; min-height: 62px; font-size: 18px; }
@@ -163,10 +163,12 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 /* Pay */
 #pay { padding-top: clamp(72px, 12vw, 120px); scroll-margin-top: 40px; }
 .pay-card { margin-top: 36px; display: grid; gap: 12px; max-width: 560px; }
-.pay-go { flex: none; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: var(--on-paper); color: var(--paper); }
+.pay-go { flex: none; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: var(--grad-deep); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
+.btn-primary .pay-go svg, .sticky .pay-go svg { color: #fff; }
 .pay-go svg { width: 22px; height: 22px; }
 .pay-intro { font-size: 16px; color: var(--ink-2); margin-bottom: 4px; }
-.g-card { background: var(--on-paper); color: var(--paper); }
+.g-card { background: var(--grad-deep); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
+.btn-primary .g-card svg { color: #fff; }
 .btn-primary.btn-row .arr { color: var(--on-paper-3); }
 .btn-primary.btn-row:hover .arr { color: var(--on-paper); }
 .btn-primary.btn-row { padding-left: 9px; }
