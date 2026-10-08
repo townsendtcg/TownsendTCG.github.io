@@ -33,7 +33,7 @@
   --bg: #07080f; --bg-2: #0d0f1d; --surface: #13162a; --surface-2: #1a1e37;
   --line: rgba(255,255,255,.08); --line-2: rgba(255,255,255,.14);
   --ink: #f4f5fa; --ink-2: #b6bacd; --ink-3: #80859d;
-  --paper: #f3f4f8; --paper-2: #e6e8ef; --on-paper: #0b0c18; --on-paper-2: #4b5068; --on-paper-3: #6f7489;
+  --paper: #f5f5f7; --paper-2: #e3e3e8; --on-paper: #1d1d1f; --on-paper-2: #515154; --on-paper-3: #6e6e73;
   --teal: #6fd8ca; --grad: linear-gradient(100deg, #8b7ae3 0%, #6f9fdb 50%, #72d8cb 100%);
   --r-sm: 12px; --r-md: 18px; --r-lg: 28px; --r-xl: 36px;
   --ease: cubic-bezier(.22, 1, .36, 1);
@@ -64,7 +64,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .h-l { font: 700 clamp(40px, 10.5vw, 84px)/.96 var(--font-d); letter-spacing: -.04em; }
 .h-m { font: 650 clamp(24px, 5.6vw, 34px)/1.1 var(--font-d); letter-spacing: -.025em; }
 .lede { font-size: clamp(17px, 4.4vw, 21px); line-height: 1.45; color: var(--ink-2); letter-spacing: -.01em; }
-.line { display: block; overflow: hidden; padding-bottom: .06em; margin-bottom: -.06em; }
+.line { display: block; overflow: hidden; padding-bottom: .16em; margin-bottom: -.16em; }
+.line .grad, .sheet h2 .grad { display: inline-block; padding-bottom: .14em; margin-bottom: -.14em; }
 .line > span { display: block; }
 
 /* Buttons: respond on press, settle on release */
@@ -74,6 +75,23 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .btn-primary:hover { background: #fff; }
 .btn-glass { color: var(--ink); background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px var(--line-2); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); }
 .btn-glass:hover { background: rgba(255,255,255,.13); }
+.btn-sm { min-height: 44px; padding: 0 18px; font-size: 15px; gap: 8px; }
+.btn-sm svg { width: 16px; height: 16px; }
+.btn-block { display: flex; width: 100%; min-height: 62px; font-size: 18px; }
+.btn-row { display: flex; width: 100%; justify-content: flex-start; gap: 14px; min-height: 66px; padding: 0 22px 0 11px; text-align: left; white-space: normal; }
+.btn-row .txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.btn-row .txt b { font-size: 17px; font-weight: 650; letter-spacing: -.01em; }
+.btn-row .txt small { margin-top: 3px; font-size: 14px; font-weight: 500; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn-row .arr { width: 18px; height: 18px; margin-left: auto; flex: none; color: var(--ink-3); transition: transform var(--t-ui) var(--ease), color var(--t-ui) var(--ease); }
+.btn-row:hover .arr { transform: translate(2px, -2px); color: var(--ink); }
+.glyph { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; font: 800 18px/1 var(--font-d); color: #fff; }
+.glyph svg { width: 20px; height: 20px; }
+.g-venmo { background: #3d95ce; } .g-cash { background: #00c244; } .g-zelle { background: #6d1ed4; }
+.g-ic { background: rgba(255,255,255,.1); color: var(--teal); }
+.stack { display: grid; gap: 10px; }
+.paper .btn-glass { color: var(--on-paper); background: rgba(0,0,0,.04); box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.paper .btn-glass:hover { background: rgba(0,0,0,.08); }
+.note-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
 .press { -webkit-tap-highlight-color: transparent; transition: transform var(--t-ui) var(--ease), background-color var(--t-ui) var(--ease), box-shadow var(--t-ui) var(--ease); }
 .btn:active, .press:active { transform: scale(.97); transition: transform var(--t-press) ease-out; }
 
@@ -101,7 +119,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 /* =========================================================
    Hero: a slow-moving wall of real cards from the binder
    ========================================================= */
-.hero { position: relative; min-height: 100svh; display: flex; align-items: flex-end; overflow: hidden; isolation: isolate; padding-top: 96px; padding-bottom: calc(40px + var(--safe-b)); }
+.hero { position: relative; display: flex; align-items: flex-start; overflow: hidden; isolation: isolate; padding-top: calc(env(safe-area-inset-top, 0px) + 92px); padding-bottom: 56px; }
+@media (min-width: 860px) { .hero { min-height: min(100svh, 920px); align-items: center; padding-top: 112px; padding-bottom: 72px; } }
 .wall { position: absolute; inset: -12% -30% -10%; z-index: -2; display: flex; flex-direction: column; justify-content: center; gap: 14px; transform: perspective(1400px) rotateX(18deg) rotateZ(-9deg) scale(1.08); transform-origin: 50% 40%; }
 .wall-in { display: flex; flex-direction: column; gap: 14px; will-change: transform; }
 .row { display: flex; gap: 14px; width: max-content; will-change: transform; animation: drift var(--dur, 90s) linear infinite; }
@@ -139,24 +158,12 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 
 /* Pay */
 #pay { padding-top: clamp(72px, 12vw, 120px); scroll-margin-top: 40px; }
-.pay-card { margin-top: 36px; display: grid; gap: 14px; max-width: 640px; }
-.pay-main { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 92px; padding: 18px 18px 18px 24px; border-radius: 24px; text-decoration: none; background: var(--paper); color: var(--on-paper); box-shadow: 0 24px 60px -28px rgba(0,0,0,.9); }
-.pay-main strong { display: block; font: 700 24px/1.15 var(--font-d); letter-spacing: -.02em; }
-.pay-main small { display: block; margin-top: 4px; font-size: 14px; color: var(--on-paper-2); }
-.pay-go { flex: none; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: var(--grad); color: var(--on-paper); transition: transform var(--t-ui) var(--ease); }
+.pay-card { margin-top: 36px; display: grid; gap: 12px; max-width: 560px; }
+.pay-go { flex: none; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: var(--on-paper); color: var(--paper); }
 .pay-go svg { width: 22px; height: 22px; }
-.pay-main:hover .pay-go { transform: translateX(3px); }
-.secure { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); padding-left: 6px; }
+.secure { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: var(--ink-3); text-align: center; }
 .secure svg { width: 14px; height: 14px; }
 .apps-label { margin-top: 18px; font-size: 14px; color: var(--ink-3); }
-.apps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.app { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; min-height: 112px; padding: 16px 14px; border-radius: var(--r-md); text-decoration: none; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
-.app:hover { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2); }
-.glyph { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font: 800 18px/1 var(--font-d); color: #fff; }
-.g-venmo { background: #3d95ce; } .g-cash { background: #00c244; } .g-zelle { background: #6d1ed4; }
-.app b { display: block; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
-.app small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-.app > span:last-child { min-width: 0; max-width: 100%; }
 .pay-foot { margin-top: 22px; display: grid; gap: 6px; font-size: 15px; color: var(--ink-2); max-width: 560px; }
 .pay-foot b { color: var(--ink); font-weight: 600; }
 
@@ -164,25 +171,26 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .film { position: relative; margin-top: 8px; border-radius: var(--r-lg); overflow: hidden; isolation: isolate; aspect-ratio: 4 / 5; background: var(--surface); box-shadow: 0 40px 80px -40px rgba(0,0,0,.9), inset 0 0 0 1px var(--line); }
 @media (min-width: 720px) { .film { aspect-ratio: 16 / 8; } }
 .pay-grid { display: grid; gap: clamp(72px, 14vw, 128px); }
+.pay-grid + .film { margin-top: clamp(72px, 14vw, 128px); }
 @media (min-width: 980px) {
-  .pay-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(48px, 6vw, 96px); align-items: center; }
-  .pay-grid .film { aspect-ratio: 4 / 5; margin-top: 0; }
+  .pay-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(48px, 6vw, 96px); align-items: start; }
+  .pay-grid .h-l { font-size: clamp(44px, 4.4vw, 64px); }
 }
 .film video, .film img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% 50%; }
 .film::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(7,8,15,0) 35%, rgba(7,8,15,.82) 100%); }
 .film-cap { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; padding: clamp(22px, 5vw, 44px); }
-.film-cap .h-m { max-width: 18ch; }
+.film-cap .h-m { max-width: 22ch; }
 .film-cap p { margin-top: 10px; max-width: 40ch; color: var(--ink-2); font-size: 16px; }
 
 /* Free card */
-.free { margin-top: clamp(64px, 12vw, 120px); padding: clamp(28px, 6vw, 56px); border-radius: var(--r-xl); position: relative; overflow: hidden; isolation: isolate; background: linear-gradient(160deg, rgba(139,122,227,.16), rgba(111,159,219,.08) 45%, rgba(114,216,203,.12)), var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-2); }
-.free .h-l { max-width: 12ch; }
-.follow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 30px; max-width: 560px; }
-.follow a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 84px; border-radius: var(--r-md); text-decoration: none; font-size: 14px; font-weight: 600; background: var(--paper); color: var(--on-paper); }
-.follow a svg { width: 22px; height: 22px; }
-.also { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; font-size: 14px; color: var(--ink-3); }
-.pill { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--ink); text-decoration: none; box-shadow: inset 0 0 0 1px var(--line-2); }
-.pill:hover { background: rgba(255,255,255,.06); }
+.free { margin-top: 0; }
+.proof-line { margin-top: 14px; font-size: 15px; color: var(--ink-3); }
+.proof-line b { color: var(--ink); font-weight: 650; }
+.follow { display: grid; gap: 10px; margin-top: 28px; max-width: 560px; }
+.follow .btn svg { width: 19px; height: 19px; }
+@media (min-width: 560px) { .follow { display: flex; flex-wrap: wrap; } }
+.also { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; font-size: 14px; color: var(--ink-3); }
+.also span { margin-right: 4px; }
 .fine { margin-top: 18px; font-size: 13px; color: var(--ink-3); }
 
 /* Shows (paper) */
@@ -195,12 +203,10 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .show-date .w { display: block; margin-top: 4px; font-size: 12px; color: var(--on-paper-3); }
 .show-name { display: block; font: 650 19px/1.25 var(--font-d); letter-spacing: -.015em; }
 .show-meta { display: block; margin-top: 3px; font-size: 15px; color: var(--on-paper-2); }
-.show.is-next { position: relative; margin: 6px -14px; padding: 18px 14px; border-radius: var(--r-md); border-bottom-color: transparent; background: var(--on-paper); color: var(--paper); }
-.show.is-next .show-date .m, .show.is-next .show-date .w { color: rgba(243,244,248,.6); }
-.show.is-next .show-meta { color: rgba(243,244,248,.72); }
+.show.is-next { position: relative; margin: 6px -14px; padding: 18px 14px; border-radius: 22px; border-bottom-color: transparent; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 12px 32px -18px rgba(0,0,0,.25); }
 .badge { display: inline-block; margin-left: 8px; padding: 3px 8px; border-radius: 999px; vertical-align: 3px; font: 700 11px/1.2 var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--on-paper); background: var(--grad); }
-.note { margin-top: 22px; font-size: 15px; color: var(--on-paper-2); }
-.note a { color: var(--on-paper); font-weight: 600; text-underline-offset: 3px; }
+.note { font-size: 15px; color: var(--on-paper-2); }
+.shows-list + .note, .note-row { margin-top: 22px; }
 @media (min-width: 860px) {
   .shows-grid { display: grid; grid-template-columns: 5fr 7fr; gap: 64px; align-items: start; }
   .shows-grid .sec-head { position: sticky; top: 120px; }
@@ -209,19 +215,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 
 /* Shop */
 .shop { background: var(--bg); }
-.tiles { display: grid; gap: 12px; margin-top: 40px; }
-@media (min-width: 760px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.tile { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; min-height: 176px; padding: 24px; border-radius: var(--r-lg); text-decoration: none; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
-.tile:hover { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2); }
-.tile .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px var(--line); }
-.tile .ic svg { width: 22px; height: 22px; color: var(--teal); }
-.tile b { display: block; font: 650 22px/1.15 var(--font-d); letter-spacing: -.02em; }
-.tile small { display: block; margin-top: 6px; font-size: 15px; color: var(--ink-2); }
-.tile .arr { position: absolute; top: 24px; right: 24px; width: 22px; height: 22px; color: var(--ink-3); transition: transform var(--t-ui) var(--ease), color var(--t-ui) var(--ease); }
-.tile:hover .arr { transform: translate(3px, -3px); color: var(--ink); }
-.tile.wn { background: linear-gradient(150deg, rgba(139,122,227,.22), rgba(114,216,203,.12)), var(--surface); }
-.ask { margin-top: 28px; font-size: 16px; color: var(--ink-2); }
-.ask a { color: var(--ink); font-weight: 600; text-underline-offset: 3px; }
+.ask { margin-top: 24px; font-size: 16px; color: var(--ink-2); }
+.shop-stack { margin-top: 40px; max-width: 640px; }
 
 /* Footer */
 .foot { padding-top: 64px; padding-bottom: calc(120px + var(--safe-b)); border-top: 1px solid var(--line); }
@@ -347,22 +342,35 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
         <h2 id="pay-title" class="h-l" style="margin-top:14px"><span class="line" style="--i:0"><span>Found something?</span></span><span class="line" style="--i:1"><span class="grad">Pay here.</span></span></h2>
       </div>
       <div class="pay-card">
-        <a class="pay-main press" id="pay-main" href="https://pay.jim.com/austin-mckay-townsend" target="_blank" rel="noopener" data-r>
-          <span><strong>Pay with card</strong><small>Credit · Debit · Apple Pay · Google Pay</small></span>
-          <span class="pay-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-        </a>
-        <p class="secure" data-r style="--i:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Secure card checkout by JIM</p>
+        <a class="btn btn-primary btn-block" id="pay-main" href="https://pay.jim.com/austin-mckay-townsend" target="_blank" rel="noopener" data-r>Pay with card <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <p class="secure" data-r style="--i:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Credit, debit, Apple Pay or Google Pay. Secure checkout by JIM.</p>
         <p class="apps-label" data-r style="--i:2">Or use the app you already have</p>
-        <div class="apps">
-          <a class="app press" href="https://venmo.com/u/ATowns8" target="_blank" rel="noopener" aria-label="Pay with Venmo, @ATowns8" data-r style="--i:3"><span class="glyph g-venmo" aria-hidden="true">V</span><span><b>Venmo</b><small>@ATowns8</small></span></a>
-          <a class="app press" href="https://cash.app/$Atowns08" target="_blank" rel="noopener" aria-label="Pay with Cash App, $Atowns08" data-r style="--i:4"><span class="glyph g-cash" aria-hidden="true">$</span><span><b>Cash App</b><small>$Atowns08</small></span></a>
-          <a class="app press" href="https://enroll.zellepay.com/qr-codes?data=eyJuYW1lIjoiQXVzdGluIiwidG9rZW4iOiI4MDE4NDIzMzMxIn0=" target="_blank" rel="noopener" aria-label="Pay with Zelle, Austin Townsend, 801 842 3331" data-r style="--i:5"><span class="glyph g-zelle" aria-hidden="true">Z</span><span><b>Zelle</b><small>(801) 842-3331</small></span></a>
+        <div class="stack">
+          <a class="btn btn-glass btn-row" href="https://venmo.com/u/ATowns8" target="_blank" rel="noopener" aria-label="Pay with Venmo, @ATowns8" data-r style="--i:3"><span class="glyph g-venmo" aria-hidden="true">V</span><span class="txt"><b>Venmo</b><small>@ATowns8</small></span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+          <a class="btn btn-glass btn-row" href="https://cash.app/$Atowns08" target="_blank" rel="noopener" aria-label="Pay with Cash App, $Atowns08" data-r style="--i:4"><span class="glyph g-cash" aria-hidden="true">$</span><span class="txt"><b>Cash App</b><small>$Atowns08</small></span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+          <a class="btn btn-glass btn-row" href="https://enroll.zellepay.com/qr-codes?data=eyJuYW1lIjoiQXVzdGluIiwidG9rZW4iOiI4MDE4NDIzMzMxIn0=" target="_blank" rel="noopener" aria-label="Pay with Zelle, Austin Townsend, 801 842 3331" data-r style="--i:5"><span class="glyph g-zelle" aria-hidden="true">Z</span><span class="txt"><b>Zelle</b><small>(801) 842-3331</small></span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
         </div>
         <div class="pay-foot" data-r style="--i:6">
           <p>Cash or crypto? Both are welcome at the table.</p>
           <p><b>Show us your confirmation before you head out</b> and the cards are yours.</p>
         </div>
       </div>
+      </div>
+
+      <!-- FREE CARD -->
+      <section class="free" id="free" aria-labelledby="free-title">
+        <p class="eyebrow" data-r>Free card</p>
+        <h2 id="free-title" class="h-l" style="margin-top:14px"><span class="line" style="--i:0"><span>Follow us.</span></span><span class="line" style="--i:1"><span class="grad">Get a free card.</span></span></h2>
+        <p class="lede" style="margin-top:18px;max-width:36ch;--i:2" data-r>Follow @townsend_tcg, show us at the table, and pick any card from the $1 binder.</p>
+        <p class="proof-line" data-r style="--i:3">Join <b class="tnum" data-sp="f" data-count="936">936</b> followers · <b class="tnum" data-sp="v" data-count="1050429" data-fmt="compact">1.05M</b> video views</p>
+        <div class="follow" data-r style="--i:4">
+          <a class="btn btn-primary" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>Instagram</a>
+          <a class="btn btn-glass" href="https://www.tiktok.com/@townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 3c.4 2.3 1.9 3.8 4.1 4v3.1c-1.5 0-2.9-.4-4.1-1.2v6.3c0 3.4-2.7 5.8-5.9 5.8S5 18.6 5 15.4c0-3.3 2.8-6 6.3-5.7v3.2c-1.5-.3-3.1.9-3.1 2.5 0 1.4 1.1 2.6 2.6 2.6s2.6-1.1 2.6-2.8V3h3.2z"/></svg>TikTok</a>
+          <a class="btn btn-glass" href="https://www.youtube.com/@townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.6 2.6 0 0 0-1.8 1.8A27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8zM10 15V9l5.2 3z"/></svg>YouTube</a>
+        </div>
+        <div class="also" data-r style="--i:5"><span>Also on</span><a class="btn btn-glass btn-sm" href="https://www.facebook.com/61590616964245/" target="_blank" rel="noopener">Facebook</a><a class="btn btn-glass btn-sm" href="https://www.threads.com/@townsend_tcg" target="_blank" rel="noopener">Threads</a><a class="btn btn-glass btn-sm" href="https://x.com/Townsend_TCG" target="_blank" rel="noopener">X</a></div>
+        <p class="fine" data-r style="--i:6">One free card per person. Already following? Show us anyway and say hi.</p>
+      </section>
       </div>
 
       <!-- FILM -->
@@ -374,21 +382,6 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
           <p>Come flip through the binders, bring your trades, and say hi.</p>
         </figcaption>
       </figure>
-      </div>
-
-      <!-- FREE CARD -->
-      <section class="free" id="free" aria-labelledby="free-title">
-        <p class="eyebrow" data-r>Free card</p>
-        <h2 id="free-title" class="h-l" style="margin-top:14px"><span class="line" style="--i:0"><span>Follow us.</span></span><span class="line" style="--i:1"><span class="grad">Get a free card.</span></span></h2>
-        <p class="lede" style="margin-top:18px;max-width:36ch;--i:2" data-r>Follow @townsend_tcg, show us at the table, and pick any card from the $1 binder.</p>
-        <div class="follow">
-          <a class="press" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener" data-r style="--i:3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>Instagram</a>
-          <a class="press" href="https://www.tiktok.com/@townsend_tcg" target="_blank" rel="noopener" data-r style="--i:4"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 3c.4 2.3 1.9 3.8 4.1 4v3.1c-1.5 0-2.9-.4-4.1-1.2v6.3c0 3.4-2.7 5.8-5.9 5.8S5 18.6 5 15.4c0-3.3 2.8-6 6.3-5.7v3.2c-1.5-.3-3.1.9-3.1 2.5 0 1.4 1.1 2.6 2.6 2.6s2.6-1.1 2.6-2.8V3h3.2z"/></svg>TikTok</a>
-          <a class="press" href="https://www.youtube.com/@townsend_tcg" target="_blank" rel="noopener" data-r style="--i:5"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.6 2.6 0 0 0-1.8 1.8A27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8zM10 15V9l5.2 3z"/></svg>YouTube</a>
-        </div>
-        <div class="also" data-r style="--i:6"><span>Also on</span><a class="pill press" href="https://www.facebook.com/61590616964245/" target="_blank" rel="noopener">Facebook</a><a class="pill press" href="https://www.threads.com/@townsend_tcg" target="_blank" rel="noopener">Threads</a><a class="pill press" href="https://x.com/Townsend_TCG" target="_blank" rel="noopener">X</a></div>
-        <p class="fine" data-r style="--i:7">One free card per person. Already following? Show us anyway and say hi.</p>
-      </section>
     </div>
   </section>
 
@@ -416,7 +409,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
           <li class="show" data-end="2026-12-20" data-name="Cardichu Orlando" data-short="Sun, Dec 20"><span class="show-date"><span class="m">Dec</span><span class="d">20</span><span class="w">Sun</span></span><span><span class="show-name">Cardichu Orlando</span><span class="show-meta">Dezerland Park, Orlando · 11 AM – 5 PM</span></span></li>
         </ol>
         <p class="note" id="shows-empty" hidden>New dates coming soon.</p>
-        <p class="note" data-r>Plans change sometimes. <a href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener">Instagram</a> always has the latest.</p>
+        <div class="note-row" data-r><p class="note">Plans change sometimes. Instagram always has the latest.</p><a class="btn btn-glass btn-sm" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>Latest on Instagram</a></div>
       </div>
     </div>
   </section>
@@ -429,24 +422,12 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
         <h2 id="shop-title" class="h-l" style="margin-top:14px"><span class="line" style="--i:0"><span>Shop between</span></span><span class="line" style="--i:1"><span class="grad">shows.</span></span></h2>
         <p class="lede" data-r style="--i:2">Can't make it out? The same binders are listed online, and we go live on Whatnot.</p>
       </div>
-      <div class="tiles">
-        <a class="tile press" href="https://www.ebay.com/str/townsendtcg" target="_blank" rel="noopener" data-r style="--i:0">
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8Z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg></span>
-          <span><b>eBay store</b><small>Townsend TCG · singles and slabs</small></span>
-          <svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
-        </a>
-        <a class="tile press" href="https://www.tcgplayer.com/sellers/Townsend-Card-Co/e9b84105" target="_blank" rel="noopener" data-r style="--i:1">
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="5" width="11" height="15" rx="1.8"/><path d="M6.5 17.5 4.1 8.1a1.8 1.8 0 0 1 1.3-2.2L12 4.2"/></svg></span>
-          <span><b>TCGplayer</b><small>Townsend Card Co.</small></span>
-          <svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
-        </a>
-        <a class="tile wn press" href="https://whatnot.com/invite/townsend_tcg" target="_blank" rel="noopener" data-r style="--i:2">
-          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2.5"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 16.2a6 6 0 0 0 0-8.4M5 5a10 10 0 0 0 0 14M19 19a10 10 0 0 0 0-14"/></svg></span>
-          <span><b>Live on Whatnot</b><small>New to Whatnot? Our link gets you $25 to spend.</small></span>
-          <svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
-        </a>
+      <div class="stack shop-stack">
+        <a class="btn btn-glass btn-row" href="https://www.ebay.com/str/townsendtcg" target="_blank" rel="noopener" data-r style="--i:0"><span class="glyph g-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8Z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg></span><span class="txt"><b>eBay store</b><small>Singles and slabs</small></span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+        <a class="btn btn-glass btn-row" href="https://www.tcgplayer.com/sellers/Townsend-Card-Co/e9b84105" target="_blank" rel="noopener" data-r style="--i:1"><span class="glyph g-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="5" width="11" height="15" rx="1.8"/><path d="M6.5 17.5 4.1 8.1a1.8 1.8 0 0 1 1.3-2.2L12 4.2"/></svg></span><span class="txt"><b>TCGplayer</b><small>Townsend Card Co.</small></span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+        <a class="btn btn-glass btn-row" href="https://whatnot.com/invite/townsend_tcg" target="_blank" rel="noopener" data-r style="--i:2"><span class="glyph g-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2.5"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 16.2a6 6 0 0 0 0-8.4M5 5a10 10 0 0 0 0 14M19 19a10 10 0 0 0 0-14"/></svg></span><span class="txt"><b>Live on Whatnot</b><small>New here? Our link gets you $25</small></span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
       </div>
-      <p class="ask" data-r>Looking for something specific? <a href="https://ig.me/m/townsend_tcg" target="_blank" rel="noopener">Message me on Instagram</a> and I'll hunt it down.</p>
+      <div class="note-row ask" data-r><p>Looking for something specific? I'll hunt it down.</p><a class="btn btn-glass btn-sm" href="https://ig.me/m/townsend_tcg" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>Message me on Instagram</a></div>
     </div>
   </section>
 </main>
@@ -578,7 +559,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
     function step(t) {
       if (t0 === null) t0 = t;
       var p = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - p, 4);
-      el.textContent = fmt(to * e, mode);
+      el.textContent = fmt((+el.getAttribute('data-count') || to) * e, mode);
       if (p < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
