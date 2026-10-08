@@ -35,13 +35,14 @@ h1{font:800 clamp(64px,19vw,92px)/.95 var(--cond);margin:0 0 14px;letter-spacing
 .s small{display:block;font-weight:500;color:var(--muted);font-size:12px}
 footer{margin-top:28px;text-align:center;font-size:14px;color:var(--muted)}
 footer a{color:var(--paper)}
-</style>
+.lead{margin:0 0 18px}.proof{display:flex;gap:32px;margin:0 0 28px}.proof div{display:flex;flex-direction:column}.proof b{font:800 clamp(34px,10vw,44px)/1 var(--cond);letter-spacing:-.01em;background:linear-gradient(60deg,#8b7ae3 0%,#6f9fdb 50%,#72d8cb 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}.proof span{margin-top:4px;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}</style>
 </head>
 <body>
 <main>
   <div class="brand"><img src="/dragon-bg.webp" alt=""><div><b>TOWNSEND TCG</b><span>Pokémon cards · Saint Augustine, FL</span></div></div>
   <h1>Thank you!</h1>
   <p class="lead">Every order supports a small, local card shop. We appreciate you.</p>
+  <div class="proof" aria-label="Townsend TCG across social media"><div><b data-sp="f">936</b><span>Followers</span></div><div><b data-sp="v">1.05M</b><span>Video views</span></div></div>
 
   <a class="cta" id="follow" href="https://instagram.com/townsend_tcg" rel="noopener">
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 8.2A3.2 3.2 0 1 1 12 8.8a3.2 3.2 0 0 1 0 6.4ZM17.3 5.5a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4ZM12 2.2c-2.7 0-3 0-4 .1-3.5.2-5.4 2.1-5.6 5.6-.1 1-.1 1.4-.1 4.1s0 3 .1 4c.2 3.5 2.1 5.4 5.6 5.6 1 .1 1.3.1 4 .1s3 0 4-.1c3.5-.2 5.4-2.1 5.6-5.6.1-1 .1-1.3.1-4s0-3.1-.1-4.1c-.2-3.5-2.1-5.4-5.6-5.6-1-.1-1.3-.1-4-.1Zm0 1.8c2.6 0 2.9 0 4 .1 2.5.1 3.8 1.3 3.9 3.9.1 1 .1 1.3.1 4s0 3-.1 4c-.1 2.6-1.4 3.8-3.9 3.9-1 .1-1.4.1-4 .1s-3 0-4-.1c-2.6-.1-3.8-1.3-3.9-3.9-.1-1-.1-1.4-.1-4s0-3 .1-4C4.2 5.4 5.4 4.2 8 4.1c1-.1 1.4-.1 4-.1Z"/></svg>
@@ -65,6 +66,19 @@ footer a{color:var(--paper)}
 </main>
 <script>
 (function(){try{var p=new URLSearchParams(location.search);var src=(p.get("src")||"direct").slice(0,20);var b=JSON.stringify({src:src});if(navigator.sendBeacon){navigator.sendBeacon("https://ebay.townsendtcg.com/scan",new Blob([b],{type:"text/plain"}))}else{fetch("https://ebay.townsendtcg.com/scan",{method:"POST",mode:"no-cors",body:b,keepalive:true})}}catch(e){}})();
+</script>
+<script>
+(function () {
+  function compact(n) {
+    if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'M';
+    if (n >= 1e4) return Math.round(n / 1e3) + 'K';
+    return n.toLocaleString('en-US');
+  }
+  fetch('https://ebay.townsendtcg.com/social').then(function (r) { return r.json(); }).then(function (d) {
+    document.querySelectorAll('[data-sp="f"]').forEach(function (el) { if (d.followers) el.textContent = d.followers.toLocaleString('en-US'); });
+    document.querySelectorAll('[data-sp="v"]').forEach(function (el) { if (d.views) el.textContent = compact(d.views); });
+  }).catch(function () {});
+})();
 </script>
 </body>
 </html>
