@@ -260,6 +260,17 @@ img { display: block; max-width: 100%; }
   }
 }
 .free-copy { margin-top: 12px; font-size: 16px; line-height: 1.45; color: #d4d7e3; max-width: 40ch; }
+.proof { display: flex; gap: 32px; margin-top: 18px; }
+.proof div { display: flex; flex-direction: column; }
+.proof b {
+  font-family: var(--font-cond); font-weight: 800; line-height: 1; letter-spacing: -.01em;
+  font-size: clamp(2rem, 8vw, 2.6rem);
+  background: var(--foil-bright); -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+}
+.sheet-proof { margin-top: 10px; font-size: 14px; color: var(--muted-d); }
+.sheet-proof b { font-weight: 800; color: var(--on-d); }
+.proof span { margin-top: 4px; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted-d); }
 .free-top .free-actions { margin-top: 18px; }
 .free-top .fine { margin-top: 12px; font-size: 13px; }
 
@@ -807,6 +818,7 @@ main::before{content:"";position:absolute;z-index:-1;pointer-events:none;
           <div>
             <h2 id="free-title" class="free-title"><span class="ln">Follow us.</span><span class="ln grad-text">Get a free card.</span></h2>
             <p class="free-copy">Follow @townsend_tcg on Instagram, TikTok or YouTube, show us at the table, and pick any card from the $1 binder.</p>
+            <div class="proof" aria-label="Townsend TCG across social media"><div><b data-sp="f">936</b><span>Followers</span></div><div><b data-sp="v">1.05M</b><span>Video views</span></div></div>
           </div>
           <div class="free-actions">
             <a class="btn btn-paper" href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener" aria-label="Follow Townsend TCG on Instagram">
@@ -980,6 +992,7 @@ main::before{content:"";position:absolute;z-index:-1;pointer-events:none;
   <p class="sheet-kicker">Before you pay</p>
   <h2 class="sheet-title" id="sheet-title"><span class="grad-text">Grab a free card.</span></h2>
   <p class="sheet-copy" id="sheet-copy">Follow @townsend_tcg, show us at the table, and pick any card from the $1 binder on top of what you’re buying.</p>
+  <p class="sheet-proof">Join <b data-sp="f">936</b> followers &middot; <b data-sp="v">1.05M</b> video views</p>
   <div class="sheet-actions">
     <a class="btn btn-paper" data-follow href="https://instagram.com/townsend_tcg" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
@@ -1206,6 +1219,19 @@ main::before{content:"";position:absolute;z-index:-1;pointer-events:none;
       setTimeout(openSheet, reduced() ? 0 : 350);
     }
   }
+})();
+</script>
+<script>
+(function () {
+  function compact(n) {
+    if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'M';
+    if (n >= 1e4) return Math.round(n / 1e3) + 'K';
+    return n.toLocaleString('en-US');
+  }
+  fetch('https://ebay.townsendtcg.com/social').then(function (r) { return r.json(); }).then(function (d) {
+    document.querySelectorAll('[data-sp="f"]').forEach(function (el) { if (d.followers) el.textContent = d.followers.toLocaleString('en-US'); });
+    document.querySelectorAll('[data-sp="v"]').forEach(function (el) { if (d.views) el.textContent = compact(d.views); });
+  }).catch(function () {});
 })();
 </script>
 </body>
