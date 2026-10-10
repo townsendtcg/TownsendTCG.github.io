@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Consign your cards | Townsend TCG</title>
+<meta name="description" content="Consign your Pokémon cards with Townsend TCG. I list them on eBay, TCGplayer and at shows, and you set the bottom price.">
+<meta name="theme-color" content="#07080f">
+<link rel="canonical" href="https://townsendtcg.com/consign/">
+<style>
+:root{--bg:#07080f;--bg-2:#0d0f1d;--surface:#13162a;--surface-2:#1a1e37;--line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.14);--ink:#f4f5fa;--ink-2:#b6bacd;--ink-3:#80859d;--paper:#f5f5f7;--on-paper:#1d1d1f;--teal:#6fd8ca;--grad:linear-gradient(100deg,#8b7ae3 0%,#6f9fdb 50%,#72d8cb 100%);--grad-deep:linear-gradient(100deg,#6b55dd 0%,#3f7fd6 50%,#16a594 100%);--err:#ff8a8a;--font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif}
+*,*::before,*::after{box-sizing:border-box}*{margin:0}
+html{background:var(--bg);-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--font);padding:0 16px calc(40px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:640px;margin:0 auto}
+a{color:var(--teal)}
+.top{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
+.logo{font-weight:800;letter-spacing:.04em;text-decoration:none;color:var(--ink)}.logo b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+h1{font-size:clamp(30px,8vw,42px);line-height:1.08;letter-spacing:-.02em;margin:10px 0 12px}
+h1 span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{color:var(--ink-2);font-size:17px;margin-bottom:22px}
+.how{display:grid;gap:10px;margin-bottom:26px;padding:0;list-style:none;counter-reset:s}
+.how li{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px 12px 48px;position:relative;color:var(--ink-2)}
+.how li b{color:var(--ink)}
+.how li::before{counter-increment:s;content:counter(s);position:absolute;left:14px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--grad);color:#07080f;font-weight:800;font-size:13px;display:grid;place-items:center}
+fieldset{border:1px solid var(--line);background:var(--bg-2);border-radius:20px;padding:18px 16px;margin:0 0 16px}
+legend{font-weight:700;font-size:18px;padding:0 6px}
+label{display:block;font-size:14px;color:var(--ink-2);margin:12px 0 6px}
+label .req{color:var(--teal)}
+input[type=text],input[type=tel],input[type=email],input[type=number],select,textarea{width:100%;background:var(--surface);color:var(--ink);border:1px solid var(--line-2);border-radius:12px;padding:13px 14px;font:inherit;font-size:16px;-webkit-appearance:none;appearance:none}
+textarea{min-height:64px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line-2);border-radius:16px;padding:14px;margin-top:14px}
+.card-h{display:flex;justify-content:space-between;align-items:center}
+.card-h b{font-size:16px}
+.rm{background:none;border:0;color:var(--ink-3);font:inherit;font-size:14px;padding:6px}
+.photos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.ph{position:relative;aspect-ratio:5/7;border:1.5px dashed var(--line-2);border-radius:12px;display:grid;place-items:center;text-align:center;color:var(--ink-3);font-size:14px;overflow:hidden;background:var(--bg-2)}
+.ph input{position:absolute;inset:0;opacity:0;width:100%;height:100%}
+.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ph .t{pointer-events:none;padding:8px}.ph .t b{display:block;color:var(--ink);font-size:15px}
+.ph.done{border-style:solid;border-color:var(--teal)}
+.est{font-size:13px;color:var(--ink-3);margin-top:6px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:999px;font:inherit;font-size:17px;font-weight:600;cursor:pointer;width:100%}
+.btn-primary{color:#3e63c9;border:2px solid transparent;background:linear-gradient(var(--paper),var(--paper)) padding-box,var(--grad) border-box}
+.btn-glass{color:var(--ink);background:rgba(255,255,255,.06);border:1px solid var(--line-2);margin-top:14px}
+.terms{max-height:260px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--ink-2)}
+.terms h3{font-size:15px;color:var(--ink);margin:0 0 6px}.terms p{margin:0 0 8px}
+.chk{display:flex;gap:10px;align-items:flex-start;margin-top:14px;color:var(--ink);font-size:15px}
+.chk input{width:22px;height:22px;flex:none;margin-top:1px;accent-color:#6f9fdb}
+.err{color:var(--err);font-size:15px;margin:10px 0;min-height:1px}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.done-box{display:none;text-align:center;padding:30px 0}
+.done-box .ref{font-size:34px;font-weight:800;letter-spacing:.03em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin:10px 0}
+.done-box ul{list-style:none;padding:0;margin:16px 0;text-align:left;background:var(--surface);border-radius:14px;border:1px solid var(--line)}
+.done-box li{padding:10px 14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}.done-box li:first-child{border-top:0}
+.small{font-size:13px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a class="logo" href="/">TOWNSEND <b>TCG</b></a><a href="/">Back to site</a></div>
+
+  <div id="form-view">
+    <h1>Consign your <span>cards</span></h1>
+    <p class="lede">I list your cards on eBay, TCGplayer and at my shows. You set the lowest price you'll take, and I never sell below it.</p>
+    <ul class="how">
+      <li><b>Add your cards.</b> Snap the front and back of each one and type your bottom price.</li>
+      <li><b>Hand them to me.</b> Show me the confirmation screen and I'll check them in.</li>
+      <li><b>Get paid.</b> 7 days after the buyer gets the card, by the payout you pick. My fee is 15% of the sale.</li>
+    </ul>
+
+    <form id="f" novalidate>
+      <fieldset>
+        <legend>You</legend>
+        <label for="name">Full name <span class="req">*</span></label>
+        <input id="name" name="name" type="text" autocomplete="name" required>
+        <div class="row">
+          <div><label for="phone">Phone <span class="req">*</span></label><input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required></div>
+          <div><label for="email">Email <span class="req">*</span></label><input id="email" name="email" type="email" autocomplete="email" inputmode="email" required></div>
+        </div>
+        <div class="row">
+          <div><label for="payout_method">Pay me with <span class="req">*</span></label>
+            <select id="payout_method" name="payout_method" required>
+              <option value="">Choose</option><option>Venmo</option><option>Cash App</option><option>Zelle</option><option>PayPal</option><option>Cash at a show</option>
+            </select></div>
+          <div><label for="payout_handle">Your handle</label><input id="payout_handle" name="payout_handle" type="text" placeholder="@name, $tag or email" autocapitalize="off"></div>
+        </div>
+        <label for="address">Mailing address (only if you want unsold cards mailed back)</label>
+        <textarea id="address" name="address" autocomplete="street-address" rows="2"></textarea>
+        <div class="hp" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Your cards</legend>
+        <div id="cards"></div>
+        <button type="button" class="btn btn-glass" id="add">+ Add another card</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Terms</legend>
+        <div class="terms" id="terms" tabindex="0">
+          <h3>Townsend TCG consignment terms (v1, Oct 10, 2026)</h3>
+          <p><b>1. Your cards.</b> You own these cards, they're authentic, they aren't stolen, and you have the right to sell them. You're 18 or older.</p>
+          <p><b>2. What I do.</b> Townsend TCG (Austin Townsend) sells the cards for you on eBay, TCGplayer, Whatnot or at card shows. I grade condition using TCGplayer's condition guide and I set the asking price. I will never sell a card for less than the bottom price you set. If I think a card is fake, altered or not as described, I'll hand it back and won't list it.</p>
+          <p><b>3. Fees.</b> My fee is 15% of the sale price. The selling platform's fees (eBay, TCGplayer, Whatnot or card processing) and the shipping label also come out of the sale. You get the rest. Example: a card that sells for $100 at a show pays you $85. The same card sold on eBay pays you about $66 after the 15%, eBay's fees and the label.</p>
+          <p><b>4. Payment.</b> I pay you 7 days after the buyer receives the card (7 days after the sale for show sales), using the payout method you give here. If a buyer returns the card, opens a claim or reverses the payment, that sale is undone: I'll hold your payout until it's settled, and if you were already paid, the amount comes out of your next payout or you pay it back.</p>
+          <p><b>5. How long.</b> I hold your cards for 90 days. Anything unsold after 90 days goes back to you unless you choose to renew. You can pick up at one of my shows, or I'll mail them back with tracking and you pay the postage. You can ask for any unsold card back at any time.</p>
+          <p><b>6. Care.</b> Your cards are kept in sleeves and toploaders and handled carefully. If a card is lost or damaged while I have it because of my own mistake, I'll pay you your bottom price for it. I'm not responsible for loss or damage I can't control, like theft, fire or natural disaster, or for a buyer's claim that the platform decides against the seller after I've shipped as described.</p>
+          <p><b>7. Your info.</b> Your contact and payout details and your photos are used only to run your consignment. I don't sell or share them.</p>
+          <p><b>8. The rest.</b> Either of us can end this for unsold cards at any time. These terms are governed by Florida law.</p>
+        </div>
+        <label class="chk"><input type="checkbox" id="agree"> <span>I've read and agree to the consignment terms above.</span></label>
+        <label for="signature">Type your full name to sign <span class="req">*</span></label>
+        <input id="signature" name="signature" type="text" autocomplete="off">
+      </fieldset>
+
+      <p class="err" id="err" role="alert"></p>
+      <button class="btn btn-primary" id="submit" type="submit">Submit consignment</button>
+      <p class="small" style="margin-top:10px;text-align:center">Questions? DM <a href="https://ig.me/m/townsend_tcg">@townsend_tcg</a> on Instagram.</p>
+    </form>
+  </div>
+
+  <div class="done-box" id="done">
+    <p class="small">Consignment received</p>
+    <div class="ref" id="ref"></div>
+    <p>Show this screen to Austin and hand over your cards.</p>
+    <ul id="done-list"></ul>
+    <p class="small">I'll text or email you when your cards are listed and when they sell. Take a screenshot to keep your reference number.</p>
+  </div>
+</div>
+
+<template id="tpl">
+  <div class="card">
+    <div class="card-h"><b class="num">Card 1</b><button type="button" class="rm">Remove</button></div>
+    <label>Card name <span class="req">*</span></label>
+    <input class="c-name" type="text" placeholder="e.g. Charizard ex">
+    <div class="row">
+      <div><label>Set and number</label><input class="c-set" type="text" placeholder="e.g. Obsidian Flames 223/197"></div>
+      <div><label>Bottom price ($) <span class="req">*</span></label><input class="c-bottom" type="number" inputmode="decimal" min="1" step="0.01" placeholder="Lowest you'll take"></div>
+    </div>
+    <p class="est"></p>
+    <label>Anything I should know? (condition, graded, 1st edition)</label>
+    <input class="c-note" type="text">
+    <div class="photos">
+      <label class="ph" data-side="front"><input type="file" accept="image/*" capture="environment"><span class="t"><b>Front photo</b>Tap to take it</span></label>
+      <label class="ph" data-side="back"><input type="file" accept="image/*" capture="environment"><span class="t"><b>Back photo</b>Tap to take it</span></label>
+    </div>
+  </div>
+</template>
+
+<script>
+(function(){
+  var ENDPOINT = "https://ebay.townsendtcg.com/consign";
+  var TERMS_VERSION = "v1-2026-10-10";
+  var cardsEl = document.getElementById("cards"), tpl = document.getElementById("tpl"), err = document.getElementById("err");
+  function renumber(){ var cs = cardsEl.querySelectorAll(".card"); cs.forEach(function(c,i){ c.querySelector(".num").textContent = "Card " + (i+1); c.querySelector(".rm").style.visibility = cs.length > 1 ? "visible" : "hidden"; }); document.getElementById("add").style.display = cs.length >= 25 ? "none" : ""; }
+  function resize(file){ return new Promise(function(res, rej){ var img = new Image(), url = URL.createObjectURL(file); img.onload = function(){ var m = 1400, s = Math.min(1, m / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", 0.82)); }; img.onerror = function(){ rej(new Error("photo")); }; img.src = url; }); }
+  function addCard(){
+    var n = tpl.content.firstElementChild.cloneNode(true);
+    n.querySelector(".rm").onclick = function(){ n.remove(); renumber(); };
+    var b = n.querySelector(".c-bottom"), est = n.querySelector(".est");
+    b.oninput = function(){ var v = parseFloat(b.value); est.textContent = v >= 1 ? "If it sells at your bottom price: about $" + (v * 0.85).toFixed(2) + " at a show, about $" + Math.max(0, v * 0.7165 - 0.4 - (v >= 20 ? 5.5 : 1.25)).toFixed(2) + " on eBay." : ""; };
+    n.querySelectorAll(".ph").forEach(function(ph){ var inp = ph.querySelector("input"); inp.onchange = function(){ var f = inp.files && inp.files[0]; if (!f) return; resize(f).then(function(d){ ph.dataset.img = d; var im = ph.querySelector("img") || document.createElement("img"); im.src = d; im.alt = ph.dataset.side + " photo"; ph.appendChild(im); ph.classList.add("done"); }).catch(function(){ err.textContent = "That photo didn't load. Try taking it again."; }); }; });
+    cardsEl.appendChild(n); renumber();
+  }
+  document.getElementById("add").onclick = function(){ addCard(); var cs = cardsEl.querySelectorAll(".card"); cs[cs.length-1].querySelector(".c-name").focus(); };
+  addCard();
+  document.getElementById("f").addEventListener("submit", function(e){
+    e.preventDefault(); err.textContent = "";
+    var f = e.target, v = function(k){ return (f.elements[k] && f.elements[k].value || "").trim(); };
+    var cards = [], bad = "";
+    cardsEl.querySelectorAll(".card").forEach(function(c, i){
+      var nm = c.querySelector(".c-name").value.trim(), bt = parseFloat(c.querySelector(".c-bottom").value), fr = c.querySelector('[data-side=front]').dataset.img, bk = c.querySelector('[data-side=back]').dataset.img;
+      if (!bad && !nm) bad = "Card " + (i+1) + ": add the card name.";
+      if (!bad && !(bt >= 1)) bad = "Card " + (i+1) + ": add your bottom price.";
+      if (!bad && (!fr || !bk)) bad = "Card " + (i+1) + ": add a front and back photo.";
+      cards.push({ name: nm, set: c.querySelector(".c-set").value.trim(), note: c.querySelector(".c-note").value.trim(), bottom: bt, front: fr, back: bk });
+    });
+    if (!v("name")) bad = "Add your full name.";
+    else if (v("phone").replace(/\D/g,"").length < 10) bad = "Add a phone number with area code.";
+    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v("email"))) bad = "Add a valid email.";
+    else if (!v("payout_method")) bad = "Pick how you want to get paid.";
+    else if (v("payout_method") !== "Cash at a show" && !v("payout_handle")) bad = "Add your " + v("payout_method") + " handle so I can pay you.";
+    if (!bad && !document.getElementById("agree").checked) bad = "Check the box to agree to the terms.";
+    if (!bad && v("signature").length < 2) bad = "Type your full name to sign.";
+    if (bad) { err.textContent = bad; return; }
+    var btn = document.getElementById("submit"); btn.disabled = true; btn.textContent = "Sending...";
+    fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: v("name"), phone: v("phone"), email: v("email"), payout_method: v("payout_method"), payout_handle: v("payout_handle"), address: v("address"), website: v("website"), agree: true, signature: v("signature"), terms_version: TERMS_VERSION, cards: cards }) })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if (!j.ok) throw new Error(j.error || "Something went wrong.");
+        document.getElementById("form-view").style.display = "none";
+        document.getElementById("ref").textContent = j.id;
+        var ul = document.getElementById("done-list"); j.cards.forEach(function(c){ var li = document.createElement("li"); var a = document.createElement("span"); a.textContent = c.n + ". " + c.name; var b = document.createElement("span"); b.textContent = "bottom $" + c.bottom.toFixed(2); li.appendChild(a); li.appendChild(b); ul.appendChild(li); });
+        document.getElementById("done").style.display = "block"; window.scrollTo(0, 0);
+      })
+      .catch(function(x){ err.textContent = (x && x.message && x.message !== "Failed to fetch") ? x.message : "Couldn't send. Check your signal and try again."; btn.disabled = false; btn.textContent = "Submit consignment"; });
+  });
+})();
+</script>
+</body>
+</html>
